@@ -1,0 +1,46 @@
+service: bc-2-hs-contact-sync
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: us-east-1
+  stage: ${{opt:stage, 'dev'}}
+  maximumRetryAttempts: 0
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - ec2:CreateNetworkInterface
+        - ec2:DescribeNetworkInterfaces
+        - ec2:DeleteNetworkInterface
+      Resource: "*"
+
+functions:
+  bc_2_hs_contact_sync:
+    name: bc-2-hs-contact-sync
+    handler: handler.lambda_handler
+    timeout: 160
+    memorySize: 128
+    package:
+      patterns:
+        - '!**'
+        - 'handler.py'
+        - 'supporting_functions.py'
+        - 'object_properties.json'
+        - 'src/**'
+        - '!**/*tests*/**'
+        - '!.pytest_cache/**'
+        - '!**/__pycache__/**'
+        - '!**/*.pyc'
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: false
+    slim: true
+    useDownloadCache: true
+    useStaticCache: true
+
+package:
+  individually: true

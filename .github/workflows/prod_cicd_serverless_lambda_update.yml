@@ -1,0 +1,38 @@
+name: (PROD) Create Update Serverless Lambdas
+on: [workflow_dispatch]
+
+jobs:
+  update-lambdas:
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Serverless
+        run: npm install -g serverless@3.38.0
+
+      - name: Deploy all Serverless Lambdas
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_OPENFLOW_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_OPENFLOW_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+        run: |
+          cd serverless_lambdas
+          for dir in */ ; do
+            cd "$dir"
+            if [ -f requirements.txt ]; then
+              pip install -r requirements.txt -t .
+            fi
+            if grep -q serverless-python-requirements serverless.yml; then
+              serverless plugin install -n serverless-python-requirements
+            fi
+            serverless deploy --stage prod
+            cd ..
+          done
