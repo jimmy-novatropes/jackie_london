@@ -1,0 +1,17 @@
+{
+  "number": "customer_name",
+  "type": "customer_type",
+  "companyNumber": "company_number",
+  "companyName": "company_name",
+  "addressLine1": "address_one",
+  "addressLine2": "address_two",
+  "city": "city",
+  "state": "state",
+  "postalCode": "zip_code",
+  "phoneNumber": "phone_number",
+  "mobilePhoneNumber": "mobile_phone_number",
+  "email": "email",
+  "lastModifiedDateTime": "last_date_modified",
+  "id": "bc_unique_id",
+  "jobTitle": "title"
+}

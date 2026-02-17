@@ -2,11 +2,11 @@ import boto3
 import json
 
 # 🔧 Configure
-AWS_PROFILE = ""   # your AWS CLI profile (omit for Lambda/EC2 IAM role)
-REGION_NAME = ""  # region
-SECRET_NAME = ""
+AWS_PROFILE = "jackie_london"   # your AWS CLI profile (omit for Lambda/EC2 IAM role)
+REGION_NAME = "us-east-1"  # region
+SECRET_NAME = "JACKIE_LONDON_KEYS"
 SECRET_VALUE = {
-
+    "HUBSPOT_TOKEN": ""
 }
 
 

@@ -1,0 +1,17 @@
+{
+  "number": "customer_number",
+  "displayName": "customer_name",
+  "balanceDue'": "balance_due",
+  "creditLimit'": "credit_limit",
+  "salespersonCode'": "salesperson_code",
+  "lastModifiedDateTime'": "last_date_modified",
+  "addressLine1": "address_one",
+  "addressLine2": "address_two",
+  "city": "city",
+  "state": "state",
+  "postalCode": "zip_code",
+  "phoneNumber": "phone_number",
+  "email": "email",
+  "website'": "customer_website",
+  "id": "bc_unique_id_2"
+}

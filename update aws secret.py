@@ -1,9 +1,9 @@
 import boto3
 import json
 
-AWS_PROFILE = "sterling"
+AWS_PROFILE = "jackie_london"
 REGION_NAME = "us-east-1"
-SECRET_NAME = "STERLING_KEYS"
+SECRET_NAME = "JACKIE_LONDON_KEYS"
 
 
 def upsert_secret_key(key, value):
@@ -31,3 +31,7 @@ def upsert_secret_key(key, value):
 
 if __name__ == "__main__":
     upsert_secret_key("NEW_KEY", "new_value")
+
+
+
+

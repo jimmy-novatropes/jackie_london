@@ -1,19 +1,31 @@
 import os
 import requests
 import pandas as pd
+from credentials_load import (is_running_in_lambda, load_secrets, load_secrets_locally)
+from typing import Dict, Any
+
 
 # =============================
 # CONFIG
 # =============================
 
-HUBSPOT_TOKEN = ""
-EXCEL_FILE = "properties.xlsx"
+def load_jackielondon_creds() -> Dict[str, Any]:
+    if is_running_in_lambda():
+        return load_secrets("JACKIE_LONDON_KEYS")
+    return load_secrets_locally("JACKIE_LONDON_KEYS")
+
+
+CREDS = load_jackielondon_creds()
+HUBSPOT_TOKEN: str = CREDS.get("HUBSPOT_TOKEN", "")
+
+EXCEL_FILE = "Jackie London Properties.xlsx"
 
 # sheet name -> hubspot object
 SHEET_OBJECT_MAP = {
-    "Deals-Invoices": "deals",
-    "Companies": "companies",
+    # "DealsInvoices": "deals",
+    "CustomerCompanies": "companies",
     "Contacts": "contacts",
+    # "Products": "products",
     # "Custom Object": "2-12345678"
 }
 
@@ -34,29 +46,27 @@ TYPE_MAP = {
     "single line text": ("string", "text"),
     "textarea": ("string", "textarea"),
     "multi line": ("string", "textarea"),
-
     "number": ("number", "number"),
     "int": ("number", "number"),
     "float": ("number", "number"),
-
     "bool": ("bool", "booleancheckbox"),
     "boolean": ("bool", "booleancheckbox"),
-
     "date": ("date", "date"),
     "datetime": ("datetime", "date"),
-
     "dropdown": ("enumeration", "select"),
     "select": ("enumeration", "select"),
     "radio": ("enumeration", "radio"),
-
     "multi-select": ("enumeration", "checkbox"),
     "multiselect": ("enumeration", "checkbox"),
     "checkbox": ("enumeration", "checkbox"),
+    "multi-line text": ("string", "textarea"),
+    "dropdown select": ("enumeration", "select"),
 }
 
 # =============================
 # HUBSPOT HELPERS
 # =============================
+
 
 def get_existing_properties(object_type):
     r = requests.get(f"{BASE}/crm/v3/properties/{object_type}", headers=HEADERS)
@@ -123,6 +133,12 @@ def process_sheet(sheet_name, object_type):
 
     df = pd.read_excel(EXCEL_FILE, sheet_name=sheet_name)
     existing = get_existing_properties(object_type)
+    export_mapping_json(
+        df,
+        key_col="Business Central Nombre interno",
+        val_col="Internal Name HubSpot",
+        output_file=f"{sheet_name}_mapping.json"
+    )
 
     for _, row in df.iterrows():
         label = str(row.get("Property Label HubSpot", "")).strip()
@@ -202,6 +218,21 @@ def process_sheet(sheet_name, object_type):
             print(f"✅ Creating: {name}")
             create_property(object_type, create_payload)
 
+import json
+
+def export_mapping_json(df, key_col, val_col, output_file):
+    mapping = (
+        df[[key_col, val_col]]
+        .dropna()
+        .astype(str)
+        .set_index(key_col)[val_col]
+        .to_dict()
+    )
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(mapping, f, indent=2)
+
+    print(f"📄 Saved mapping JSON → {output_file}")
 
 def run():
     xls = pd.ExcelFile(EXCEL_FILE)
@@ -211,6 +242,8 @@ def run():
             print(f"⚠️ Sheet not found: {sheet}")
             continue
         process_sheet(sheet, obj)
+        # 🔥 Export JSON mapping (Internal Name → Label)
+
 
 
 if __name__ == "__main__":
