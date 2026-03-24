@@ -1,5 +1,8 @@
 name: (PROD) Create Update Serverless Lambdas
-on: [workflow_dispatch]
+on:
+  push:
+    branches:
+      - main
 
 jobs:
   update-lambdas:
