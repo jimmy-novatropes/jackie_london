@@ -33,5 +33,5 @@ functions:
         - '!__pycache__/**'
         - '!**/*.pyc'
 
-  package:
-    individually: true
+package:
+  individually: true
