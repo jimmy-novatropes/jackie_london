@@ -1,5 +1,364 @@
 {
-  "Comment": "State machine placeholder",
-  "StartAt": "Pass",
-  "States": { "Pass": { "Type": "Pass", "End": true } }
+  "Comment": "BC → HubSpot Sync Flow (robust)",
+  "StartAt": "ContactSync",
+  "States": {
+
+    "ContactSync": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "bc-2-hs-contact-sync",
+        "Payload.$": "$"
+      },
+      "ResultPath": "$.contact",
+      "Next": "CheckContact"
+    },
+    "CheckContact": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Or": [
+            {
+              "And": [
+                {
+                  "Variable": "$.contact.Payload.results_completed",
+                  "BooleanEquals": true
+                },
+                {
+                  "Or": [
+                    {
+                      "Variable": "$.contact.Payload.statusCode",
+                      "NumericEquals": 200
+                    },
+                    {
+                      "Variable": "$.contact.Payload.statusCode",
+                      "IsPresent": false
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "And": [
+                {
+                  "Variable": "States.StringToJson($.contact.Payload.body).results_completed",
+                  "BooleanEquals": true
+                },
+                {
+                  "Variable": "States.StringToJson($.contact.Payload.body).statusCode",
+                  "NumericEquals": 200
+                }
+              ]
+            }
+          ],
+          "Next": "CompanySync"
+        }
+      ],
+      "Default": "WaitContact"
+    },
+    "WaitContact": {
+      "Type": "Wait",
+      "Seconds": 3,
+      "Next": "ContactSync"
+    },
+
+    "CompanySync": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "bc-2-hs-company-sync",
+        "Payload.$": "$"
+      },
+      "ResultPath": "$.company",
+      "Next": "CheckCompany"
+    },
+    "CheckCompany": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Or": [
+            {
+              "And": [
+                {
+                  "Variable": "$.company.Payload.results_completed",
+                  "BooleanEquals": true
+                },
+                {
+                  "Or": [
+                    {
+                      "Variable": "$.company.Payload.statusCode",
+                      "NumericEquals": 200
+                    },
+                    {
+                      "Variable": "$.company.Payload.statusCode",
+                      "IsPresent": false
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "And": [
+                {
+                  "Variable": "States.StringToJson($.company.Payload.body).results_completed",
+                  "BooleanEquals": true
+                },
+                {
+                  "Variable": "States.StringToJson($.company.Payload.body).statusCode",
+                  "NumericEquals": 200
+                }
+              ]
+            }
+          ],
+          "Next": "DealSync"
+        }
+      ],
+      "Default": "WaitCompany"
+    },
+    "WaitCompany": {
+      "Type": "Wait",
+      "Seconds": 3,
+      "Next": "CompanySync"
+    },
+
+    "DealSync": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "bc-2-hs-deal-sync",
+        "Payload.$": "$"
+      },
+      "ResultPath": "$.deal",
+      "Next": "CheckDeal"
+    },
+    "CheckDeal": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Or": [
+            {
+              "And": [
+                {
+                  "Variable": "$.deal.Payload.results_completed",
+                  "BooleanEquals": true
+                },
+                {
+                  "Or": [
+                    {
+                      "Variable": "$.deal.Payload.statusCode",
+                      "NumericEquals": 200
+                    },
+                    {
+                      "Variable": "$.deal.Payload.statusCode",
+                      "IsPresent": false
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "And": [
+                {
+                  "Variable": "States.StringToJson($.deal.Payload.body).results_completed",
+                  "BooleanEquals": true
+                },
+                {
+                  "Variable": "States.StringToJson($.deal.Payload.body).statusCode",
+                  "NumericEquals": 200
+                }
+              ]
+            }
+          ],
+          "Next": "ContactCompanyAssoc"
+        }
+      ],
+      "Default": "WaitDeal"
+    },
+    "WaitDeal": {
+      "Type": "Wait",
+      "Seconds": 3,
+      "Next": "DealSync"
+    },
+
+    "ContactCompanyAssoc": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "hs-contact-company-associations",
+        "Payload.$": "$"
+      },
+      "ResultPath": "$.assoc1",
+      "Next": "CheckAssoc1"
+    },
+    "CheckAssoc1": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Or": [
+            {
+              "And": [
+                {
+                  "Variable": "$.assoc1.Payload.results_completed",
+                  "BooleanEquals": true
+                },
+                {
+                  "Or": [
+                    {
+                      "Variable": "$.assoc1.Payload.statusCode",
+                      "NumericEquals": 200
+                    },
+                    {
+                      "Variable": "$.assoc1.Payload.statusCode",
+                      "IsPresent": false
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "And": [
+                {
+                  "Variable": "States.StringToJson($.assoc1.Payload.body).results_completed",
+                  "BooleanEquals": true
+                },
+                {
+                  "Variable": "States.StringToJson($.assoc1.Payload.body).statusCode",
+                  "NumericEquals": 200
+                }
+              ]
+            }
+          ],
+          "Next": "DealCompanyAssoc"
+        }
+      ],
+      "Default": "WaitAssoc1"
+    },
+    "WaitAssoc1": {
+      "Type": "Wait",
+      "Seconds": 3,
+      "Next": "ContactCompanyAssoc"
+    },
+
+    "DealCompanyAssoc": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "hs-deal-company-associations",
+        "Payload.$": "$"
+      },
+      "ResultPath": "$.assoc2",
+      "Next": "CheckAssoc2"
+    },
+    "CheckAssoc2": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Or": [
+            {
+              "And": [
+                {
+                  "Variable": "$.assoc2.Payload.results_completed",
+                  "BooleanEquals": true
+                },
+                {
+                  "Or": [
+                    {
+                      "Variable": "$.assoc2.Payload.statusCode",
+                      "NumericEquals": 200
+                    },
+                    {
+                      "Variable": "$.assoc2.Payload.statusCode",
+                      "IsPresent": false
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "And": [
+                {
+                  "Variable": "States.StringToJson($.assoc2.Payload.body).results_completed",
+                  "BooleanEquals": true
+                },
+                {
+                  "Variable": "States.StringToJson($.assoc2.Payload.body).statusCode",
+                  "NumericEquals": 200
+                }
+              ]
+            }
+          ],
+          "Next": "DealContactAssoc"
+        }
+      ],
+      "Default": "WaitAssoc2"
+    },
+    "WaitAssoc2": {
+      "Type": "Wait",
+      "Seconds": 3,
+      "Next": "DealCompanyAssoc"
+    },
+
+    "DealContactAssoc": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "hs-deal-contact-associations",
+        "Payload.$": "$"
+      },
+      "ResultPath": "$.assoc3",
+      "Next": "CheckAssoc3"
+    },
+    "CheckAssoc3": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Or": [
+            {
+              "And": [
+                {
+                  "Variable": "$.assoc3.Payload.results_completed",
+                  "BooleanEquals": true
+                },
+                {
+                  "Or": [
+                    {
+                      "Variable": "$.assoc3.Payload.statusCode",
+                      "NumericEquals": 200
+                    },
+                    {
+                      "Variable": "$.assoc3.Payload.statusCode",
+                      "IsPresent": false
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "And": [
+                {
+                  "Variable": "States.StringToJson($.assoc3.Payload.body).results_completed",
+                  "BooleanEquals": true
+                },
+                {
+                  "Variable": "States.StringToJson($.assoc3.Payload.body).statusCode",
+                  "NumericEquals": 200
+                }
+              ]
+            }
+          ],
+          "Next": "Success"
+        }
+      ],
+      "Default": "WaitAssoc3"
+    },
+    "WaitAssoc3": {
+      "Type": "Wait",
+      "Seconds": 3,
+      "Next": "DealContactAssoc"
+    },
+
+    "Success": {
+      "Type": "Succeed"
+    }
+  }
 }
