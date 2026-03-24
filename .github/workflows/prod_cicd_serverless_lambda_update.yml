@@ -13,7 +13,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.11'
 
       - name: Install Serverless
         run: npm install -g serverless@3.38.0
@@ -27,12 +27,6 @@ jobs:
           cd serverless_lambdas
           for dir in */ ; do
             cd "$dir"
-            if [ -f requirements.txt ]; then
-              pip install -r requirements.txt -t .
-            fi
-            if grep -q serverless-python-requirements serverless.yml; then
-              serverless plugin install -n serverless-python-requirements
-            fi
             serverless deploy --stage prod
             cd ..
           done
