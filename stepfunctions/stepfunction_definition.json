@@ -10,6 +10,10 @@
         "FunctionName": "bc-2-hs-contact-sync",
         "Payload.$": "$"
       },
+      "ResultSelector": {
+        "raw.$": "$.Payload",
+        "parsedBody.$": "States.StringToJson($.Payload.body)"
+      },
       "ResultPath": "$.contact",
       "Next": "CheckContact"
     },
@@ -21,17 +25,17 @@
             {
               "And": [
                 {
-                  "Variable": "$.contact.Payload.results_completed",
+                  "Variable": "$.contact.raw.results_completed",
                   "BooleanEquals": true
                 },
                 {
                   "Or": [
                     {
-                      "Variable": "$.contact.Payload.statusCode",
+                      "Variable": "$.contact.raw.statusCode",
                       "NumericEquals": 200
                     },
                     {
-                      "Variable": "$.contact.Payload.statusCode",
+                      "Variable": "$.contact.raw.statusCode",
                       "IsPresent": false
                     }
                   ]
@@ -41,11 +45,11 @@
             {
               "And": [
                 {
-                  "Variable": "States.StringToJson($.contact.Payload.body).results_completed",
+                  "Variable": "$.contact.parsedBody.results_completed",
                   "BooleanEquals": true
                 },
                 {
-                  "Variable": "States.StringToJson($.contact.Payload.body).statusCode",
+                  "Variable": "$.contact.parsedBody.statusCode",
                   "NumericEquals": 200
                 }
               ]
@@ -69,6 +73,10 @@
         "FunctionName": "bc-2-hs-company-sync",
         "Payload.$": "$"
       },
+      "ResultSelector": {
+        "raw.$": "$.Payload",
+        "parsedBody.$": "States.StringToJson($.Payload.body)"
+      },
       "ResultPath": "$.company",
       "Next": "CheckCompany"
     },
@@ -80,17 +88,17 @@
             {
               "And": [
                 {
-                  "Variable": "$.company.Payload.results_completed",
+                  "Variable": "$.company.raw.results_completed",
                   "BooleanEquals": true
                 },
                 {
                   "Or": [
                     {
-                      "Variable": "$.company.Payload.statusCode",
+                      "Variable": "$.company.raw.statusCode",
                       "NumericEquals": 200
                     },
                     {
-                      "Variable": "$.company.Payload.statusCode",
+                      "Variable": "$.company.raw.statusCode",
                       "IsPresent": false
                     }
                   ]
@@ -100,11 +108,11 @@
             {
               "And": [
                 {
-                  "Variable": "States.StringToJson($.company.Payload.body).results_completed",
+                  "Variable": "$.company.parsedBody.results_completed",
                   "BooleanEquals": true
                 },
                 {
-                  "Variable": "States.StringToJson($.company.Payload.body).statusCode",
+                  "Variable": "$.company.parsedBody.statusCode",
                   "NumericEquals": 200
                 }
               ]
@@ -128,6 +136,10 @@
         "FunctionName": "bc-2-hs-deal-sync",
         "Payload.$": "$"
       },
+      "ResultSelector": {
+        "raw.$": "$.Payload",
+        "parsedBody.$": "States.StringToJson($.Payload.body)"
+      },
       "ResultPath": "$.deal",
       "Next": "CheckDeal"
     },
@@ -139,17 +151,17 @@
             {
               "And": [
                 {
-                  "Variable": "$.deal.Payload.results_completed",
+                  "Variable": "$.deal.raw.results_completed",
                   "BooleanEquals": true
                 },
                 {
                   "Or": [
                     {
-                      "Variable": "$.deal.Payload.statusCode",
+                      "Variable": "$.deal.raw.statusCode",
                       "NumericEquals": 200
                     },
                     {
-                      "Variable": "$.deal.Payload.statusCode",
+                      "Variable": "$.deal.raw.statusCode",
                       "IsPresent": false
                     }
                   ]
@@ -159,11 +171,11 @@
             {
               "And": [
                 {
-                  "Variable": "States.StringToJson($.deal.Payload.body).results_completed",
+                  "Variable": "$.deal.parsedBody.results_completed",
                   "BooleanEquals": true
                 },
                 {
-                  "Variable": "States.StringToJson($.deal.Payload.body).statusCode",
+                  "Variable": "$.deal.parsedBody.statusCode",
                   "NumericEquals": 200
                 }
               ]
@@ -187,6 +199,10 @@
         "FunctionName": "hs-contact-company-associations",
         "Payload.$": "$"
       },
+      "ResultSelector": {
+        "raw.$": "$.Payload",
+        "parsedBody.$": "States.StringToJson($.Payload.body)"
+      },
       "ResultPath": "$.assoc1",
       "Next": "CheckAssoc1"
     },
@@ -198,17 +214,17 @@
             {
               "And": [
                 {
-                  "Variable": "$.assoc1.Payload.results_completed",
+                  "Variable": "$.assoc1.raw.results_completed",
                   "BooleanEquals": true
                 },
                 {
                   "Or": [
                     {
-                      "Variable": "$.assoc1.Payload.statusCode",
+                      "Variable": "$.assoc1.raw.statusCode",
                       "NumericEquals": 200
                     },
                     {
-                      "Variable": "$.assoc1.Payload.statusCode",
+                      "Variable": "$.assoc1.raw.statusCode",
                       "IsPresent": false
                     }
                   ]
@@ -218,11 +234,11 @@
             {
               "And": [
                 {
-                  "Variable": "States.StringToJson($.assoc1.Payload.body).results_completed",
+                  "Variable": "$.assoc1.parsedBody.results_completed",
                   "BooleanEquals": true
                 },
                 {
-                  "Variable": "States.StringToJson($.assoc1.Payload.body).statusCode",
+                  "Variable": "$.assoc1.parsedBody.statusCode",
                   "NumericEquals": 200
                 }
               ]
@@ -246,6 +262,10 @@
         "FunctionName": "hs-deal-company-associations",
         "Payload.$": "$"
       },
+      "ResultSelector": {
+        "raw.$": "$.Payload",
+        "parsedBody.$": "States.StringToJson($.Payload.body)"
+      },
       "ResultPath": "$.assoc2",
       "Next": "CheckAssoc2"
     },
@@ -257,17 +277,17 @@
             {
               "And": [
                 {
-                  "Variable": "$.assoc2.Payload.results_completed",
+                  "Variable": "$.assoc2.raw.results_completed",
                   "BooleanEquals": true
                 },
                 {
                   "Or": [
                     {
-                      "Variable": "$.assoc2.Payload.statusCode",
+                      "Variable": "$.assoc2.raw.statusCode",
                       "NumericEquals": 200
                     },
                     {
-                      "Variable": "$.assoc2.Payload.statusCode",
+                      "Variable": "$.assoc2.raw.statusCode",
                       "IsPresent": false
                     }
                   ]
@@ -277,11 +297,11 @@
             {
               "And": [
                 {
-                  "Variable": "States.StringToJson($.assoc2.Payload.body).results_completed",
+                  "Variable": "$.assoc2.parsedBody.results_completed",
                   "BooleanEquals": true
                 },
                 {
-                  "Variable": "States.StringToJson($.assoc2.Payload.body).statusCode",
+                  "Variable": "$.assoc2.parsedBody.statusCode",
                   "NumericEquals": 200
                 }
               ]
@@ -305,6 +325,10 @@
         "FunctionName": "hs-deal-contact-associations",
         "Payload.$": "$"
       },
+      "ResultSelector": {
+        "raw.$": "$.Payload",
+        "parsedBody.$": "States.StringToJson($.Payload.body)"
+      },
       "ResultPath": "$.assoc3",
       "Next": "CheckAssoc3"
     },
@@ -316,17 +340,17 @@
             {
               "And": [
                 {
-                  "Variable": "$.assoc3.Payload.results_completed",
+                  "Variable": "$.assoc3.raw.results_completed",
                   "BooleanEquals": true
                 },
                 {
                   "Or": [
                     {
-                      "Variable": "$.assoc3.Payload.statusCode",
+                      "Variable": "$.assoc3.raw.statusCode",
                       "NumericEquals": 200
                     },
                     {
-                      "Variable": "$.assoc3.Payload.statusCode",
+                      "Variable": "$.assoc3.raw.statusCode",
                       "IsPresent": false
                     }
                   ]
@@ -336,11 +360,11 @@
             {
               "And": [
                 {
-                  "Variable": "States.StringToJson($.assoc3.Payload.body).results_completed",
+                  "Variable": "$.assoc3.parsedBody.results_completed",
                   "BooleanEquals": true
                 },
                 {
-                  "Variable": "States.StringToJson($.assoc3.Payload.body).statusCode",
+                  "Variable": "$.assoc3.parsedBody.statusCode",
                   "NumericEquals": 200
                 }
               ]
@@ -351,6 +375,7 @@
       ],
       "Default": "WaitAssoc3"
     },
+
     "WaitAssoc3": {
       "Type": "Wait",
       "Seconds": 3,
