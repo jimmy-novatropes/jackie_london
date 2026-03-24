@@ -99,7 +99,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     # After getting `companies` and `company_id`...
     company_id = company_account[0]["id"]
 
-    contacts_resp = requests.get(f"{base}/companies({company_id})/contacts", headers=headers, timeout=30)
+    contacts_resp = requests.get(f"{base}/companies({company_id})/contacts?$select=*", headers=headers, timeout=30)
     contacts_resp.raise_for_status()
     contacts = contacts_resp.json().get("value", [])
 

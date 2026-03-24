@@ -1,1 +1,24 @@
-{}
+{
+  "customerNumber": "customer_number",
+  "customerName": "customer_name",
+  "postingDate": "posting_date",
+  "externalDocumentNumber": "document_number",
+  "salesperson": "salesperson_code",
+  "status": "client_status",
+  "shipToAddressCode": "ship_to_address_code",
+  "shipToAddressName": "ship_to_address_name",
+  "shipToAddressLine1": "ship_to_address_address_one",
+  "shipToAddressLine2": "ship_to_address_address_two",
+  "shipToCity": "ship_to_address_city",
+  "shipToState": "ship_to_address_state",
+  "shipToPostCode": "ship_to_address_zip_code",
+  "shipToName": "ship_to_address_contact",
+  "invoiceDate": "invoice_date",
+  "billToCustomerId": "bill_to_customer_id",
+  "billToName": "bill_to_name",
+  "orderId": "order_id",
+  "id": "sales_order_id",
+  "totalAmountIncludingTax": "amount",
+  "totalTaxAmount": "tax_amount",
+  "dueDate": "closedate"
+}

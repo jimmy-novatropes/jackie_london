@@ -10,8 +10,11 @@
   "city": "city",
   "state": "state",
   "postalCode": "zip_code",
-  "phoneNumber": "phone_number",
+  "phoneNumber": "phone",
   "email": "email",
   "website": "customer_website",
-  "id": "bc_unique_id_2"
+  "id": "bc_unique_id_2",
+  "Language_Code": "language_code",
+  "Customer_Price_Group": "customer_price_group",
+  "Payment_Terms_Code": "payment_terms"
 }

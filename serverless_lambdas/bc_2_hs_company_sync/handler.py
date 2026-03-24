@@ -5,6 +5,7 @@ from upsert_functions import prepare_companies_batch_payload,send_batch_upsert
 from credentials_load import (is_running_in_lambda, load_secrets, load_secrets_locally)
 from supporting_functions import get_page, get_bc_token
 from typing import Dict, Any, Optional
+import math
 
 HUBSPOT_API = "https://api.hubapi.com"
 
@@ -53,6 +54,139 @@ def get_all_hubspot_users():
     return users
 
 
+from datetime import datetime
+from statistics import mean
+
+from datetime import datetime
+from statistics import mean
+from collections import defaultdict
+
+# def calculate_collection_metrics(entries, credit_limit):
+#
+#     invoices = []
+#     payments = []
+#
+#     for e in entries:
+#         e["Posting_Date"] = datetime.strptime(e["Posting_Date"], "%Y-%m-%d")
+#
+#         if e["Document_Type"] == "Invoice":
+#             invoices.append(e)
+#
+#         elif e["Document_Type"] == "Payment":
+#             payments.append(e)
+#
+#     collection_days = []
+#     late_days = []
+#
+#     for inv in invoices:
+#         amount = inv["Amount"]
+#         inv_date = inv["Posting_Date"]
+#         due = datetime.strptime(inv["Due_Date"], "%Y-%m-%d")
+#
+#         # find matching payment
+#         candidates = [
+#             p for p in payments
+#             if abs(p["Amount"]) == amount and p["Posting_Date"] >= inv_date
+#         ]
+#
+#         if not candidates:
+#             continue
+#
+#         payment = min(candidates, key=lambda x: x["Posting_Date"])
+#         pay_date = payment["Posting_Date"]
+#
+#         collection_days.append((pay_date - inv_date).days)
+#
+#         late = (pay_date - due).days
+#         late_days.append(max(late, 0))
+#
+#     average_collection_days = mean(collection_days) if collection_days else 0
+#     average_late_days = mean(late_days) if late_days else 0
+#     return {
+#         "average_collection_period": average_collection_days,
+#         "average_late_payments": average_late_days
+#     }
+from datetime import datetime
+from statistics import mean
+
+def calculate_collection_metrics(entries, credit_limit=0):
+
+    invoices = []
+    payments = []
+
+    for e in entries:
+        e["Posting_Date"] = datetime.strptime(e["Posting_Date"], "%Y-%m-%d")
+        e["Due_Date"] = datetime.strptime(e["Due_Date"], "%Y-%m-%d")
+
+        if e["Document_Type"] == "Invoice":
+            invoices.append(e)
+        elif e["Document_Type"] == "Payment":
+            payments.append(e)
+
+    collection_days = []
+    late_days = []
+
+    total_sales = 0
+    total_sales_fy = 0
+    balance = 0
+
+    current_year = datetime.utcnow().year
+
+    for inv in invoices:
+        amount = inv["Amount"]
+        inv_date = inv["Posting_Date"]
+        due = inv["Due_Date"]
+
+        total_sales += amount
+
+        if inv_date.year == current_year:
+            total_sales_fy += amount
+
+        balance += inv.get("Remaining_Amount", 0)
+
+        candidates = [
+            p for p in payments
+            if abs(p["Amount"]) == amount and p["Posting_Date"] >= inv_date
+        ]
+
+        if not candidates:
+            continue
+
+        payment = min(candidates, key=lambda x: x["Posting_Date"])
+        pay_date = payment["Posting_Date"]
+
+        collection_days.append((pay_date - inv_date).days)
+
+        late = (pay_date - due).days
+        late_days.append(max(late, 0))
+
+    avg_collection = mean(collection_days) if collection_days else 0
+    avg_collection = math.ceil(avg_collection)  # round up to nearest whole day
+    avg_late = mean(late_days) if late_days else 0
+    avg_late = math.ceil(avg_late)  # round up to nearest whole day
+
+    usage_credit_limit = balance / credit_limit if credit_limit else 0
+
+    return {
+        "balance": balance,
+        "total_sales": total_sales,
+        "total_sales_fiscal_year": total_sales_fy,
+        "average_collection_period": avg_collection,
+        "average_late_payments": avg_late,
+        "usage_of_credit_limit": usage_credit_limit
+    }
+
+    # return {
+    #         # "total_sales": total_sales,
+    #         # "total_sales_fiscal_year": total_sales_fy,
+    #         "average_collection_period": avg_collection,
+    #         "average_late_payments": avg_late,
+    #         # "usage_of_credit_limit": usage_credit_limit,
+    #         # "balance": balance
+    #     }
+
+
+# CRM extension
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     deal_owners = get_all_hubspot_users()
     batch_size = 500
@@ -99,15 +233,54 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     # After getting `companies` and `company_id`...
     company_id = company_account[0]["id"]
     # 4. Fetch all contacts in the company
-    companies_resp = requests.get(f"{base}/companies({company_id})/customers", headers=headers, timeout=30)
+
+    # customer_url = f"https://api.businesscentral.dynamics.com/v2.0/{CREDS['tenant_id']}/Production/ODataV4/Company('JACKIE LONDON')/Customer_Card/"
+    # customer_url = f"https://api.businesscentral.dynamics.com/v2.0/{CREDS['tenant_id']}/Production/ODataV4/Customer_Card/"
+    # customer_url = "https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE LONDON')/Customer_Master"
+    # customer_url = "https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/"
+    # customer_url = "https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE LONDON')/Cust_ledgerEntries"
+    # customer_url = "https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE LONDON')/Power_BI_Customer_List"
+    # customer_url = "https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE LONDON')/powerbifinance"
+
+    new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Feb_27_2026/api/openflow/integration/v1.0/companies({company_id})/customers"
+    new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/JAN_04_2026/api/openflow/integration/v1.0/companies({company_id})/customers"
+    new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/DEC_16_2025/api/openflow/integration/v1.0/companies({company_id})/customers"
+    # companies_resp = requests.get(f"{base}/companies({company_id})/customers", headers=headers, timeout=30)
+    companies_resp = requests.get(new_url, headers=headers, timeout=30)
     companies_resp.raise_for_status()
     customers = companies_resp.json().get("value", [])
+    companies = []
+    for cust_ind, customer in enumerate(customers):
+        # print("Customer:", customer)
+        customer_number = customer.get("number")
+        url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE LONDON')/Cust_LedgerEntries?$filter=Customer_No eq '{customer_number}'"
+        Url = f"""https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE%20LONDON')/customers"""
+        data = requests.get(url, headers=headers, timeout=30)
+
+        url_fields = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production//ODataV4/Company('JACKIE LONDON')/Customer_Master?$filter=No eq '{customer_number}'"
+        data_fields = requests.get(url_fields, headers=headers, timeout=30)
+        full_fields = data_fields.json().get("value", [{}])[0]
+        customer_merged = {**customer, **full_fields}
+        customer_merged = dict(sorted(customer_merged.items()))
+
+        metadata_fields = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4"
+        data_metadata = requests.get(metadata_fields, headers=headers, timeout=30)
+        data_11 = data_metadata.json().get("value", [])
+
+        url = f"""https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE%20LONDON')/customers"""
+        customer_card_data = requests.get(url, headers=headers, timeout=30)
+
+        transactions = data.json().get("value", [])
+        company_metrics = calculate_collection_metrics(transactions, credit_limit=customer.get("Credit_Limit", 0))
+        hubspot_company_data = map_company(customer_merged, deal_owners)
+        merged = {**hubspot_company_data, **company_metrics}
+        companies.append(merged)
+        if cust_ind >= 1000:  # limit to 10 companies for testing
+            break
 
     HEADERS = {"Authorization": f"Bearer {hs_token}"}
-
-    companies = [map_company(cust, deal_owners) for cust in customers]
     payload_url, payload = prepare_companies_batch_payload(companies, unique_prop="bc_unique_id_2")
-    send_batch_upsert(payload_url, payload, hs_token)
+    results = send_batch_upsert(payload_url, payload, hs_token)
 
     return {
         "company_id": company_id,
@@ -120,3 +293,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 if __name__ == "__main__":
     print(lambda_handler({}, None))
+
+    "Extension Settings Saved Customer CRM Integration Fields"
+    "Adecuaciones Bc"

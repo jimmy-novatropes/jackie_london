@@ -22,9 +22,9 @@ EXCEL_FILE = "Jackie London Properties.xlsx"
 
 # sheet name -> hubspot object
 SHEET_OBJECT_MAP = {
-    # "DealsInvoices": "deals",
-    "CustomerCompanies": "companies",
-    "Contacts": "contacts",
+    "DealsInvoices": "deals",
+    # "CustomerCompanies": "companies",
+    # "Contacts": "contacts",
     # "Products": "products",
     # "Custom Object": "2-12345678"
 }
