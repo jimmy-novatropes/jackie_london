@@ -1,0 +1,47 @@
+name: (PROD) Create or Update Lambda Dependency Layer
+
+on: [workflow_dispatch]
+
+jobs:
+  deploy-layer:
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install zip
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      - name: Build Lambda layer
+        run: |
+          set -e
+
+          mkdir -p layer/python
+
+          pip install -r layers/python_deps/requirements.txt \
+            -t layer/python
+
+      - name: Zip layer
+        run: |
+          cd layer
+          zip -r python_deps_layer.zip python
+          cd ..
+
+      - name: Publish Lambda Layer
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_OPENFLOW_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_OPENFLOW_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+        run: |
+          aws lambda publish-layer-version \
+            --layer-name python-deps-layer \
+            --zip-file fileb://layer/python_deps_layer.zip \
+            --compatible-runtimes python3.11 \
+            --region us-east-1

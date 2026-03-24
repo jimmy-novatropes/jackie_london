@@ -1,0 +1,20 @@
+service: python-deps-layer
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: us-east-1
+
+layers:
+  pythonDeps:
+    path: .
+    compatibleRuntimes:
+      - python3.11
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    layer: true
+    dockerizePip: false
