@@ -11,6 +11,7 @@ from typing import List, Dict, Any
 from datetime import datetime, timedelta, timezone
 # from supporting_functions import load_secrets, load_netsuite_credentials
 from credentials_load import (is_running_in_lambda, load_secrets, load_secrets_locally)
+import json
 def load_jackielondon_creds() -> Dict[str, Any]:
     if is_running_in_lambda():
         return load_secrets("JACKIE_LONDON_KEYS")
@@ -44,14 +45,6 @@ def get_contacts(weeks_back=24) -> List[Dict]:
     after = None
 
     while True:
-        # params = {
-        #     "limit": PAGE_SIZE,
-        #     "properties": f"[email,firstname,lastname,{NETSUITE_CONTACT_PROP},lastmodifieddate]",
-        #     "associations": "companies",
-        #     "archived": "false",
-        #     "sorts": "-lastmodifieddate",
-        #     # "sorts": "email",
-        # }
 
         params = {
             "limit": PAGE_SIZE,
@@ -69,8 +62,7 @@ def get_contacts(weeks_back=24) -> List[Dict]:
                         },
                         {
                             "propertyName": "bc_unique_id",
-                            "operator": "GT",
-                            "value": "0"
+                            "operator": "HAS_PROPERTY",
                         },
                         {
                             "propertyName": "company",
@@ -82,8 +74,8 @@ def get_contacts(weeks_back=24) -> List[Dict]:
             "sorts": [
                 {
                     # "propertyName": "number_of_associated_stores",
-                    "propertyName": "createdate",
-                    # "propertyName": "lastmodifieddate",
+                    # "propertyName": "createdate",
+                    "propertyName": "lastmodifieddate",
                     "direction": "DESCENDING"
                 }
             ]
@@ -217,6 +209,11 @@ def lambda_handler(event=None, context=None):
     return {
         "contacts_checked": len(contacts),
         "results_completed": True,
+        "statusCode": 200,
+        "body": json.dumps({
+                "message": f"Processed  cards across  stores",
+                "results_completed": True
+            }),
         "linked": linked,
         "completed": True
     }
