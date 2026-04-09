@@ -456,6 +456,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     return {
         "company_id": company_id,
+        "results_completed": True,
+        "statusCode": 200,
+        "body": json.dumps({
+            "message": f"Processed  cards across  stores",
+            "results_completed": True
+        })
         # "next_link": next_link,
         # "processed": processed,
         # "total_processed": processed + event.get("total_processed", 0),
