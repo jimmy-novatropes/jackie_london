@@ -104,7 +104,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         from datetime import datetime, timedelta, timezone
 
         # example: last 24 hours
-        since = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        since = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
 
         params = {
             "$select": "*",
@@ -123,6 +123,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         return {
             "company_id": company_id,
+            "results_completed": True,
             "body": json.dumps({
                 "message": f"Processed  cards across  stores",
                 "results_completed": True

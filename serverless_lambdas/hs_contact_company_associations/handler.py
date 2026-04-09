@@ -216,6 +216,7 @@ def lambda_handler(event=None, context=None):
 
     return {
         "contacts_checked": len(contacts),
+        "results_completed": True,
         "linked": linked,
         "completed": True
     }
