@@ -6,6 +6,9 @@ from credentials_load import (is_running_in_lambda, load_secrets, load_secrets_l
 from supporting_functions import get_page, get_bc_token
 from typing import Dict, Any, Optional
 import math
+from urllib.parse import quote
+import random
+import json
 
 HUBSPOT_API = "https://api.hubapi.com"
 
@@ -234,9 +237,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     company_id = company_account[0]["id"]
     # 4. Fetch all contacts in the company
 
-    # customer_url = f"https://api.businesscentral.dynamics.com/v2.0/{CREDS['tenant_id']}/Production/ODataV4/Company('JACKIE LONDON')/Customer_Card/"
+    customer_url = f"https://api.businesscentral.dynamics.com/v2.0/{CREDS['tenant_id']}/Production/ODataV4/Company('JACKIE LONDON')/Customer_Card/"
     # customer_url = f"https://api.businesscentral.dynamics.com/v2.0/{CREDS['tenant_id']}/Production/ODataV4/Customer_Card/"
-    # customer_url = "https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE LONDON')/Customer_Master"
+    customer_url = "https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE LONDON')/Customer_Master"
     # customer_url = "https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/"
     # customer_url = "https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE LONDON')/Cust_ledgerEntries"
     # customer_url = "https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE LONDON')/Power_BI_Customer_List"
@@ -245,16 +248,26 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Feb_27_2026/api/openflow/integration/v1.0/companies({company_id})/customers"
     new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/JAN_04_2026/api/openflow/integration/v1.0/companies({company_id})/customers"
     new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/DEC_16_2025/api/openflow/integration/v1.0/companies({company_id})/customers"
-    # companies_resp = requests.get(f"{base}/companies({company_id})/customers", headers=headers, timeout=30)
-    companies_resp = requests.get(new_url, headers=headers, timeout=30)
+    from datetime import datetime, timedelta, timezone
+
+    # example: last 24 hours
+    since = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+    params = {
+        "$select": "*",
+        "$filter": f"lastModifiedDateTime ge {since}"
+    }
+    companies_resp = requests.get(f"{base}/companies({company_id})/customers", headers=headers, params=params,timeout=30)
+    # companies_resp = requests.get(new_url, headers=headers, timeout=30)
     companies_resp.raise_for_status()
-    customers = companies_resp.json().get("value", [])
+    customers_1 = companies_resp.json().get("value", [])
+    customers_2 = random.sample(customers_1, len(customers_1))
+    customers = random.sample(customers_2, len(customers_2))
+    # customers = customers_1[::-1]  # process oldest customers first
     companies = []
     for cust_ind, customer in enumerate(customers):
         # print("Customer:", customer)
         customer_number = customer.get("number")
         url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE LONDON')/Cust_LedgerEntries?$filter=Customer_No eq '{customer_number}'"
-        Url = f"""https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE%20LONDON')/customers"""
         data = requests.get(url, headers=headers, timeout=30)
 
         url_fields = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production//ODataV4/Company('JACKIE LONDON')/Customer_Master?$filter=No eq '{customer_number}'"
@@ -263,27 +276,37 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         customer_merged = {**customer, **full_fields}
         customer_merged = dict(sorted(customer_merged.items()))
 
-        metadata_fields = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4"
-        data_metadata = requests.get(metadata_fields, headers=headers, timeout=30)
-        data_11 = data_metadata.json().get("value", [])
-
-        url = f"""https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE%20LONDON')/customers"""
-        customer_card_data = requests.get(url, headers=headers, timeout=30)
-
         transactions = data.json().get("value", [])
         company_metrics = calculate_collection_metrics(transactions, credit_limit=customer.get("Credit_Limit", 0))
         hubspot_company_data = map_company(customer_merged, deal_owners)
         merged = {**hubspot_company_data, **company_metrics}
-        companies.append(merged)
-        if cust_ind >= 1000:  # limit to 10 companies for testing
-            break
 
-    HEADERS = {"Authorization": f"Bearer {hs_token}"}
-    payload_url, payload = prepare_companies_batch_payload(companies, unique_prop="bc_unique_id_2")
-    results = send_batch_upsert(payload_url, payload, hs_token)
+        filter_str = f"'No.' IS '{customer_number}'"
+        encoded_filter = quote(filter_str, safe="")
+
+        merged["business_central_url"] = (
+            "https://businesscentral.dynamics.com/"
+            "55e10fec-4486-496b-842d-cc54c37e7d74/Production"
+            "?company=JACKIE%20LONDON"
+            "&page=21"
+            f"&filter={encoded_filter}"
+        )
+        # merged["business_central_url"] = "https://businesscentral.dynamics.com/55e10fec-4486-496b-842d-cc54c37e7d74/Production?company=JACKIE%20LONDON&page=22&filter="
+        companies.append(merged)
+        if len(companies) >= 50:  # limit to 10 companies for testing
+            HEADERS = {"Authorization": f"Bearer {hs_token}"}
+            payload_url, payload = prepare_companies_batch_payload(companies, unique_prop="bc_unique_id_2")
+            results = send_batch_upsert(payload_url, payload, hs_token)
+            # reset companies list after sending batch
+            companies = []
+            print(f"Processed batch of {len(results)} companies. Last customer processed: {customer_number} (index {cust_ind + 1}/{len(customers)})")
 
     return {
         "company_id": company_id,
+        "body": json.dumps({
+            "message": f"Processed  cards across  stores",
+            "results_completed": True
+        })
         # "next_link": next_link,
         # "processed": processed,
         # "total_processed": processed + event.get("total_processed", 0),

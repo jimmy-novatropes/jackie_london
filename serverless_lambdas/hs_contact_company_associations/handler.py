@@ -27,7 +27,7 @@ HEADERS = {
 }
 
 PAGE_SIZE = 100
-MAX_RECORDS = 10000
+MAX_RECORDS = 6000
 
 NETSUITE_CONTACT_PROP = "company"
 NETSUITE_COMPANY_PROP = "name"
@@ -37,25 +37,61 @@ NETSUITE_COMPANY_PROP = "name"
 # === FETCH CONTACTS ======================================================
 
 def get_contacts(weeks_back=24) -> List[Dict]:
-    url = f"{HS_BASE}/crm/v3/objects/contacts"
+    url = f"{HS_BASE}/crm/v3/objects/contacts/search"
     cutoff_dt = datetime.now(timezone.utc) - timedelta(weeks=weeks_back)
 
     results = []
     after = None
 
     while True:
+        # params = {
+        #     "limit": PAGE_SIZE,
+        #     "properties": f"[email,firstname,lastname,{NETSUITE_CONTACT_PROP},lastmodifieddate]",
+        #     "associations": "companies",
+        #     "archived": "false",
+        #     "sorts": "-lastmodifieddate",
+        #     # "sorts": "email",
+        # }
+
         params = {
             "limit": PAGE_SIZE,
-            "properties": f"[email,firstname,lastname,{NETSUITE_CONTACT_PROP},lastmodifieddate]",
-            "associations": "companies",
+            # "properties": ["dealname", NETSUITE_DEAL_PROP, "lastmodifieddate", "num_associated_contacts"],
+            "properties": ["email","firstname","lastname",NETSUITE_CONTACT_PROP,"lastmodifieddate", "name"],
+            "associations": ["companies"],
             "archived": "false",
-            # "sorts": "-lastmodifieddate",
-            "sorts": "-email",
+            "filterGroups": [
+                {
+                    "filters": [
+                        {
+                            "propertyName": "number_of_associated_companies",
+                            "operator": "EQ",
+                            "value": "0"
+                        },
+                        {
+                            "propertyName": "bc_unique_id",
+                            "operator": "GT",
+                            "value": "0"
+                        },
+                        {
+                            "propertyName": "company",
+                            "operator": "HAS_PROPERTY",
+                        }
+                    ]
+                }
+            ],
+            "sorts": [
+                {
+                    # "propertyName": "number_of_associated_stores",
+                    "propertyName": "createdate",
+                    # "propertyName": "lastmodifieddate",
+                    "direction": "DESCENDING"
+                }
+            ]
         }
         if after:
             params["after"] = after
 
-        r = requests.get(url, headers=HEADERS, params=params)
+        r = requests.post(url, headers=HEADERS, json=params)
         r.raise_for_status()
         data = r.json()
 
@@ -172,15 +208,14 @@ def lambda_handler(event=None, context=None):
     contacts = get_contacts()
 
     print(f"📊 Contacts fetched: {len(contacts)}")
-    unassoc = filter_unassociated(contacts)
-    print(f"🔎 Unassociated contacts: {len(unassoc)}")
+    # unassoc = filter_unassociated(contacts)
+    # print(f"🔎 Unassociated contacts: {len(unassoc)}")
 
-    linked = link_contacts_to_companies(unassoc)
+    linked = link_contacts_to_companies(contacts)
     print(f"✅ Linked {linked} contacts")
 
     return {
         "contacts_checked": len(contacts),
-        "unassociated": len(unassoc),
         "linked": linked,
         "completed": True
     }

@@ -5,6 +5,7 @@ from upsert_functions import prepare_contacts_batch_payload, send_batch_upsert
 from credentials_load import (is_running_in_lambda, load_secrets, load_secrets_locally)
 from supporting_functions import get_page, get_bc_token
 from typing import Dict, Any, Optional
+import json
 
 HUBSPOT_API = "https://api.hubapi.com"
 
@@ -122,7 +123,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         return {
             "company_id": company_id,
-            # "next_link": next_link,
+            "body": json.dumps({
+                "message": f"Processed  cards across  stores",
+                "results_completed": True
+            })
+                    # "next_link": next_link,
             # "processed": processed,
             # "total_processed": processed + event.get("total_processed", 0),
             # "done": next_link is None,
