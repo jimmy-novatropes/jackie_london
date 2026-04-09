@@ -54,68 +54,73 @@ def get_all_hubspot_users():
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    deal_owners = get_all_hubspot_users()
-    batch_size = 500
-    tenant_id = CREDS.get("tenant_id")
-    client_id = CREDS.get("client_id")
-    client_secret = CREDS.get("client_secret")
-    api_base_url = CREDS.get("api_base_url")
 
-    tenant_id = ""
+    try:
+        deal_owners = get_all_hubspot_users()
+        batch_size = 500
+        tenant_id = CREDS.get("tenant_id")
+        client_id = CREDS.get("client_id")
+        client_secret = CREDS.get("client_secret")
+        api_base_url = CREDS.get("api_base_url")
 
-    hs_token = CREDS.get("HUBSPOT_TOKEN")
-    token_url = f"https://login.microsoftonline.com/{CREDS['tenant_id']}/oauth2/v2.0/token"
+        tenant_id = ""
 
-    # 2. Get access token
-    resp = requests.post(token_url, data={
-        "grant_type": "client_credentials",
-        "client_id": CREDS["client_id"],
-        "client_secret": CREDS["client_secret"],
-        "scope": "https://api.businesscentral.dynamics.com/.default",
-    })
-    resp.raise_for_status()
-    token = resp.json()["access_token"]
-    base = (
-        api_base_url
-        or (
-            "https://api.businesscentral.dynamics.com/v2.0/"
-            f"{tenant_id}/Production/api/v2.0"
+        hs_token = CREDS.get("HUBSPOT_TOKEN")
+        token_url = f"https://login.microsoftonline.com/{CREDS['tenant_id']}/oauth2/v2.0/token"
+
+        # 2. Get access token
+        resp = requests.post(token_url, data={
+            "grant_type": "client_credentials",
+            "client_id": CREDS["client_id"],
+            "client_secret": CREDS["client_secret"],
+            "scope": "https://api.businesscentral.dynamics.com/.default",
+        })
+        resp.raise_for_status()
+        token = resp.json()["access_token"]
+        base = (
+            api_base_url
+            or (
+                "https://api.businesscentral.dynamics.com/v2.0/"
+                f"{tenant_id}/Production/api/v2.0"
+            )
         )
-    )
 
-    bc_headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-        "Prefer": f'odata.maxpagesize={batch_size}',
-    }
-    base = f"https://api.businesscentral.dynamics.com/v2.0/{CREDS['tenant_id']}/Production/api/v2.0"
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    request_url = f"{base}/companies"
-    # request_url = f"{base}/customers"
+        bc_headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "Prefer": f'odata.maxpagesize={batch_size}',
+        }
+        base = f"https://api.businesscentral.dynamics.com/v2.0/{CREDS['tenant_id']}/Production/api/v2.0"
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        request_url = f"{base}/companies"
+        # request_url = f"{base}/customers"
 
-    company_account = requests.get(request_url, headers=headers).json()["value"]
-    print("Companies:", company_account)
+        company_account = requests.get(request_url, headers=headers).json()["value"]
+        print("Companies:", company_account)
 
-    # After getting `companies` and `company_id`...
-    company_id = company_account[0]["id"]
+        # After getting `companies` and `company_id`...
+        company_id = company_account[0]["id"]
 
-    contacts_resp = requests.get(f"{base}/companies({company_id})/contacts?$select=*", headers=headers, timeout=30)
-    contacts_resp.raise_for_status()
-    contacts = contacts_resp.json().get("value", [])
+        contacts_resp = requests.get(f"{base}/companies({company_id})/contacts?$select=*", headers=headers, timeout=30)
+        contacts_resp.raise_for_status()
+        contacts = contacts_resp.json().get("value", [])
 
-    HEADERS = {"Authorization": f"Bearer {hs_token}"}
+        HEADERS = {"Authorization": f"Bearer {hs_token}"}
 
-    bc_data = [map_contact(cust, deal_owners) for cust in contacts]
-    payload_url, payload = prepare_contacts_batch_payload(bc_data, unique_prop="bc_unique_id")
-    send_batch_upsert(payload_url, payload, hs_token)
+        bc_data = [map_contact(cust, deal_owners) for cust in contacts]
+        payload_url, payload = prepare_contacts_batch_payload(bc_data, unique_prop="bc_unique_id")
+        send_batch_upsert(payload_url, payload, hs_token)
 
-    return {
-        "company_id": company_id,
-        # "next_link": next_link,
-        # "processed": processed,
-        # "total_processed": processed + event.get("total_processed", 0),
-        # "done": next_link is None,
-    }
+        return {
+            "company_id": company_id,
+            # "next_link": next_link,
+            # "processed": processed,
+            # "total_processed": processed + event.get("total_processed", 0),
+            # "done": next_link is None,
+        }
+    except Exception as e:
+        print("❌ Error in lambda_handler:", e)
+        return {"error": str(e)}
 
 
 if __name__ == "__main__":
