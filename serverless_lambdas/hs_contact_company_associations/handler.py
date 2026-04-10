@@ -28,7 +28,7 @@ HEADERS = {
 }
 
 PAGE_SIZE = 100
-MAX_RECORDS = 6000
+MAX_RECORDS = 5000
 
 NETSUITE_CONTACT_PROP = "company"
 NETSUITE_COMPANY_PROP = "name"
@@ -129,6 +129,9 @@ def build_company_map(unassoc_contacts: List[Dict]) -> Dict[str, str]:
     company_map = {}
     ids = list(netsuite_ids)
 
+    ids = [id.strip() for id in ids if id and id.strip()]
+
+
     for i in range(0, len(ids), 100):
         chunk = ids[i:i + 100]
         payload = {
@@ -153,6 +156,8 @@ def build_company_map(unassoc_contacts: List[Dict]) -> Dict[str, str]:
             ns_id = comp["properties"].get(NETSUITE_COMPANY_PROP)
             if ns_id:
                 company_map[ns_id] = comp["id"]
+            else:
+                print(f"⚠️ Company {comp['id']}, {comp['properties']}")
 
     return company_map
 
@@ -164,7 +169,7 @@ def link_contacts_to_companies(unassoc_contacts: List[Dict]) -> int:
 
     associations = []
     for c in unassoc_contacts:
-        ns_id = c["properties"].get(NETSUITE_CONTACT_PROP)
+        ns_id = c["properties"].get(NETSUITE_CONTACT_PROP).strip()
         company_id = company_map.get(ns_id)
         if company_id:
             associations.append({

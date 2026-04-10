@@ -171,12 +171,12 @@ def calculate_collection_metrics(entries, credit_limit=0):
     usage_credit_limit = balance / credit_limit if credit_limit else 0
 
     return {
-        "balance": balance,
-        "total_sales": total_sales,
-        "total_sales_fiscal_year": total_sales_fy,
+        "balance": round(balance, 2),
+        "total_sales": round(total_sales, 2),
+        "total_sales_fiscal_year": round(total_sales_fy, 2),
         "average_collection_period": avg_collection,
         "average_late_payments": avg_late,
-        "usage_of_credit_limit": usage_credit_limit
+        "usage_of_credit_limit": round(usage_credit_limit, 2)
     }
 
     # return {
@@ -251,7 +251,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     from datetime import datetime, timedelta, timezone
 
     # example: last 24 hours
-    since = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
+    since = (datetime.now(timezone.utc) - timedelta(days=6)).isoformat()
     params = {
         "$select": "*",
         "$filter": f"lastModifiedDateTime ge {since}"
@@ -269,17 +269,20 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         customer_number = customer.get("number")
         url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE LONDON')/Cust_LedgerEntries?$filter=Customer_No eq '{customer_number}'"
         data = requests.get(url, headers=headers, timeout=30)
-
+        #
         url_fields = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production//ODataV4/Company('JACKIE LONDON')/Customer_Master?$filter=No eq '{customer_number}'"
         data_fields = requests.get(url_fields, headers=headers, timeout=30)
         full_fields = data_fields.json().get("value", [{}])[0]
         customer_merged = {**customer, **full_fields}
-        customer_merged = dict(sorted(customer_merged.items()))
-
+        # customer_merged = customer
+        # customer_merged = dict(sorted(customer_merged.items()))
+        #
         transactions = data.json().get("value", [])
         company_metrics = calculate_collection_metrics(transactions, credit_limit=customer.get("Credit_Limit", 0))
         hubspot_company_data = map_company(customer_merged, deal_owners)
+        # hubspot_company_data = map_company(customer, deal_owners)
         merged = {**hubspot_company_data, **company_metrics}
+        merged = hubspot_company_data
 
         filter_str = f"'No.' IS '{customer_number}'"
         encoded_filter = quote(filter_str, safe="")
@@ -291,9 +294,13 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             "&page=21"
             f"&filter={encoded_filter}"
         )
+        merged["customer_name"] = merged["customer_name"].strip().title() if merged.get("customer_name") else None
+        merged["name"] = merged["name"].strip().title() if merged.get("name") else None
+        merged["lifecyclestage"] = "customer"
+        # merged[]
         # merged["business_central_url"] = "https://businesscentral.dynamics.com/55e10fec-4486-496b-842d-cc54c37e7d74/Production?company=JACKIE%20LONDON&page=22&filter="
         companies.append(merged)
-        if len(companies) >= 50:  # limit to 10 companies for testing
+        if len(companies) >= 25 or cust_ind == len(customers) - 1:
             HEADERS = {"Authorization": f"Bearer {hs_token}"}
             payload_url, payload = prepare_companies_batch_payload(companies, unique_prop="bc_unique_id_2")
             results = send_batch_upsert(payload_url, payload, hs_token)

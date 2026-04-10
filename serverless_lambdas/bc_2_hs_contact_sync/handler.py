@@ -104,7 +104,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         from datetime import datetime, timedelta, timezone
 
         # example: last 24 hours
-        since = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
+        since = (datetime.now(timezone.utc) - timedelta(days=6)).isoformat()
 
         params = {
             "$select": "*",
@@ -118,7 +118,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         HEADERS = {"Authorization": f"Bearer {hs_token}"}
 
         bc_data = [map_contact(cust, deal_owners) for cust in contacts]
+        #[id.strip() for id in ids if id and id.strip()] strip company name
+        bc_data = [{**d, "company": d["company"].strip().title()} if "company" in d else d for d in bc_data]
+        bc_data = [{**d, "firstname": d["firstname"].strip().title()} if "firstname" in d else d for d in bc_data]
+        bc_data = [{**d, "lastname": d["lastname"].strip().title()} if "lastname" in d else d for d in bc_data]
+        bc_data = [{**d, "lifecyclestage": "customer"} for d in bc_data]
+
         payload_url, payload = prepare_contacts_batch_payload(bc_data, unique_prop="bc_unique_id")
+
         send_batch_upsert(payload_url, payload, hs_token)
 
         return {

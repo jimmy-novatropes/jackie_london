@@ -16,5 +16,6 @@
   "id": "bc_unique_id_2",
   "Language_Code": "language_code",
   "Customer_Price_Group": "customer_price_group",
-  "Payment_Terms_Code": "payment_terms"
+  "Payment_Terms_Code": "payment_terms",
+  "Responsibility_Center": "responsibility_center"
 }
