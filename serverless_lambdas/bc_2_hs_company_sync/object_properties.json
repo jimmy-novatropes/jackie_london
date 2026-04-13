@@ -22,5 +22,12 @@
   "dbaName": "dba_name",
   "printInvoice": "do_not_print_invoice",
   "startDate": "startdate",
-  "endDate": "end_date"
+  "endDate": "end_date",
+  "youtube": "youtube",
+  "facebook": "facebook",
+  "instagram": "instagram",
+  "outOfBusiness": "out_of_business",
+  "outOfBusinessDate": "out_of_business_date",
+  "leadSource": "lead_source"
+
 }

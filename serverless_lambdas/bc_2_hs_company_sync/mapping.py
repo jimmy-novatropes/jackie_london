@@ -167,6 +167,8 @@ def map_company(company: Dict[str, Any], deal_owners) -> Dict[str, Any]:
         mapped["startdate"] = to_hubspot_date_safe(mapped.get("startdate"), "%Y-%m-%d")
     if "end_date" in mapped and mapped["end_date"]:
         mapped["end_date"] = to_hubspot_date_safe(mapped.get("end_date"), "%Y-%m-%d")
+    if "out_of_business_date" in mapped and mapped["out_of_business_date"]:
+        mapped["out_of_business_date"] = to_hubspot_date_safe(mapped.get("out_of_business_date"), "%Y-%m-%d")
 
     if "language_code" in mapped and mapped["language_code"]:
         print()

@@ -261,19 +261,20 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Feb_27_2026/api/openflow/integration/v1.0/companies({company_id})/customers"
     new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/JAN_04_2026/api/openflow/integration/v1.0/companies({company_id})/customers"
     new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/DEC_16_2025/api/openflow/integration/v1.0/companies({company_id})/customers"
-    new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/api/openflow/integration/v1.0/companies({company_id})/customers"
+    new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/api/openflow3/integration/v1.0/companies({company_id})/customerscrm"
+    # new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Feb_27_2026/api/openflow2/integration/v1.0/companies({company_id})/customerscrm"
+
     from datetime import datetime, timedelta, timezone
 
     # example: last 24 hours
-    since = (datetime.now(timezone.utc) - timedelta(days=1200)).isoformat()
+    since = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
     params = {
         "$select": "*",
         "$filter": f"lastModifiedDateTime ge {since}"
     }
-    companies_resp = requests.get(f"{base}/companies({company_id})/customers", headers=headers, params=params,timeout=30)
     dba_data = requests.get(new_url, headers=headers, timeout=30)
     dba_data_records = safe_get_value(dba_data)
-
+    companies_resp = requests.get(f"{base}/companies({company_id})/customers", headers=headers, params=params,timeout=30)
 
     # dba_data_records = dba_data.json().get("value", [])
     companies_resp.raise_for_status()
@@ -299,8 +300,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         try:
             full_fields = safe_get_value(data_fields)[0]
 
-        except Exception:
-            full_fields = data_fields.json().get("value", [{}])[0]
+        except Exception as e:
+            try:
+                full_fields = data_fields.json().get("value", [{}])[0]
+            except Exception as e2:
+                print(f"Error parsing fields for customer {customer_number}: {e} / {e2}")
+                full_fields = {}
         customer_merged = {**customer, **full_fields}
         customer_merged = {**customer_merged, **(result_dba or {})}
         # customer_merged = customer
@@ -331,7 +336,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # merged["business_central_url"] = "https://businesscentral.dynamics.com/55e10fec-4486-496b-842d-cc54c37e7d74/Production?company=JACKIE%20LONDON&page=22&filter="
         companies.append(merged)
         # if len(companies) >= 25 or cust_ind == len(customers) - 1:
-        if len(companies) >= 200:
+        if len(companies) >= 500:
             HEADERS = {"Authorization": f"Bearer {hs_token}"}
             payload_url, payload = prepare_companies_batch_payload(companies, unique_prop="bc_unique_id_2")
             results = send_batch_upsert(payload_url, payload, hs_token)
