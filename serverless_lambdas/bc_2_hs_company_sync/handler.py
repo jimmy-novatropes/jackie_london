@@ -12,6 +12,19 @@ import json
 
 HUBSPOT_API = "https://api.hubapi.com"
 
+def safe_get_value(response):
+    """
+    Returns (json_data, value_list)
+    """
+    try:
+        data = response.json()
+        return data.get("value", [])
+    except Exception:
+        print("Invalid JSON response:")
+        print("Status:", response.status_code)
+        print("Text:", response.text[:500])
+        return []
+
 
 def load_jackielondon_creds() -> Dict[str, Any]:
     if is_running_in_lambda():
@@ -171,7 +184,7 @@ def calculate_collection_metrics(entries, credit_limit=0):
     usage_credit_limit = balance / credit_limit if credit_limit else 0
 
     return {
-        "balance": round(balance, 2),
+        # "balance": round(balance, 2),
         "total_sales": round(total_sales, 2),
         "total_sales_fiscal_year": round(total_sales_fy, 2),
         "average_collection_period": avg_collection,
@@ -248,41 +261,58 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Feb_27_2026/api/openflow/integration/v1.0/companies({company_id})/customers"
     new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/JAN_04_2026/api/openflow/integration/v1.0/companies({company_id})/customers"
     new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/DEC_16_2025/api/openflow/integration/v1.0/companies({company_id})/customers"
+    new_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/api/openflow/integration/v1.0/companies({company_id})/customers"
     from datetime import datetime, timedelta, timezone
 
     # example: last 24 hours
-    since = (datetime.now(timezone.utc) - timedelta(days=6)).isoformat()
+    since = (datetime.now(timezone.utc) - timedelta(days=1200)).isoformat()
     params = {
         "$select": "*",
         "$filter": f"lastModifiedDateTime ge {since}"
     }
     companies_resp = requests.get(f"{base}/companies({company_id})/customers", headers=headers, params=params,timeout=30)
-    # companies_resp = requests.get(new_url, headers=headers, timeout=30)
+    dba_data = requests.get(new_url, headers=headers, timeout=30)
+    dba_data_records = safe_get_value(dba_data)
+
+
+    # dba_data_records = dba_data.json().get("value", [])
     companies_resp.raise_for_status()
-    customers_1 = companies_resp.json().get("value", [])
+    # customers_1 = companies_resp.json().get("value", [])
+    customers_1 = safe_get_value(companies_resp)
     customers_2 = random.sample(customers_1, len(customers_1))
     customers = random.sample(customers_2, len(customers_2))
     # customers = customers_1[::-1]  # process oldest customers first
     companies = []
     for cust_ind, customer in enumerate(customers):
-        # print("Customer:", customer)
         customer_number = customer.get("number")
+        customer_id = customer.get("id")
+
+        result_dba = next((c for c in dba_data_records if c.get("id") == customer_id), None)
+
         url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE LONDON')/Cust_LedgerEntries?$filter=Customer_No eq '{customer_number}'"
         data = requests.get(url, headers=headers, timeout=30)
+
         #
         url_fields = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production//ODataV4/Company('JACKIE LONDON')/Customer_Master?$filter=No eq '{customer_number}'"
         data_fields = requests.get(url_fields, headers=headers, timeout=30)
-        full_fields = data_fields.json().get("value", [{}])[0]
+        #
+        try:
+            full_fields = safe_get_value(data_fields)[0]
+
+        except Exception:
+            full_fields = data_fields.json().get("value", [{}])[0]
         customer_merged = {**customer, **full_fields}
+        customer_merged = {**customer_merged, **(result_dba or {})}
         # customer_merged = customer
         # customer_merged = dict(sorted(customer_merged.items()))
         #
-        transactions = data.json().get("value", [])
+        # transactions = data.json().get("value", [])
+        transactions = safe_get_value(data)
         company_metrics = calculate_collection_metrics(transactions, credit_limit=customer.get("Credit_Limit", 0))
         hubspot_company_data = map_company(customer_merged, deal_owners)
         # hubspot_company_data = map_company(customer, deal_owners)
         merged = {**hubspot_company_data, **company_metrics}
-        merged = hubspot_company_data
+        # merged = hubspot_company_data
 
         filter_str = f"'No.' IS '{customer_number}'"
         encoded_filter = quote(filter_str, safe="")
@@ -300,13 +330,17 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # merged[]
         # merged["business_central_url"] = "https://businesscentral.dynamics.com/55e10fec-4486-496b-842d-cc54c37e7d74/Production?company=JACKIE%20LONDON&page=22&filter="
         companies.append(merged)
-        if len(companies) >= 25 or cust_ind == len(customers) - 1:
+        # if len(companies) >= 25 or cust_ind == len(customers) - 1:
+        if len(companies) >= 200:
             HEADERS = {"Authorization": f"Bearer {hs_token}"}
             payload_url, payload = prepare_companies_batch_payload(companies, unique_prop="bc_unique_id_2")
             results = send_batch_upsert(payload_url, payload, hs_token)
             # reset companies list after sending batch
             companies = []
             print(f"Processed batch of {len(results)} companies. Last customer processed: {customer_number} (index {cust_ind + 1}/{len(customers)})")
+    if companies:
+        payload_url, payload = prepare_companies_batch_payload(companies, unique_prop="bc_unique_id_2")
+        results = send_batch_upsert(payload_url, payload, hs_token)
 
     return {
         "company_id": company_id,

@@ -12,6 +12,34 @@ MISSING = object()
 PROPERTY_MAP: Dict[str, Dict[str, str]] = load_json_file("object_properties.json") or {}
 
 
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+from datetime import datetime, timezone
+
+INVALID_DATES = {"0001-01-01", "0000-00-00", "", None}
+
+def to_hubspot_date_safe(date_str, input_format):
+    """
+    Convert date string → HubSpot timestamp (ms at midnight UTC)
+    """
+
+    if date_str in INVALID_DATES:
+        return None
+
+    try:
+        dt = datetime.strptime(date_str, input_format)
+
+        if dt.year <= 1900:
+            return None
+
+        # Force midnight UTC directly
+        dt_utc = datetime(dt.year, dt.month, dt.day, tzinfo=timezone.utc)
+
+        return int(dt_utc.timestamp() * 1000)
+
+    except Exception:
+        return None
 def get_nested_value(data: Dict[str, Any], path: str, default=MISSING) -> Any:
     """
     Get a nested value from a dict using 'a.b.c' paths.
@@ -135,258 +163,13 @@ def map_company(company: Dict[str, Any], deal_owners) -> Dict[str, Any]:
     mapped["name"] = mapped.get("customer_name", "").strip()
     mapped["payment_terms"] = mapped.get("paymentTerms").lower().replace(" ", "_") if mapped.get("paymentTerms") else None
 
+    if "startdate" in mapped and mapped["startdate"]:
+        mapped["startdate"] = to_hubspot_date_safe(mapped.get("startdate"), "%Y-%m-%d")
+    if "end_date" in mapped and mapped["end_date"]:
+        mapped["end_date"] = to_hubspot_date_safe(mapped.get("end_date"), "%Y-%m-%d")
+
     if "language_code" in mapped and mapped["language_code"]:
         print()
     return mapped
 
 
-def map_apartment(group: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Maps stayable_group to an apartment-like HS object, plus address_1 from first stayable.
-    """
-    mapped = generic_map(group, "stayable_group")
-
-    for stayable in group.get("stayables", []):
-        addr = stayable.get("address1")
-        addr2 = stayable.get("address2")
-        addr3 = stayable.get("address3")
-        mapped["hs_address_1"] = addr
-        mapped["hs_address_2"] = addr2
-        mapped["address_3"] = addr3
-
-
-
-    return mapped
-
-
-def map_contact(person: Dict[str, Any], deal_owners) -> Dict[str, Any]:
-    mapped = generic_map(person, "contact")
-
-    # if "codeone_email" in mapped:
-    #     mapped["email"] = mapped["codeone_email"]
-        # if mapped["codeone_email"] == "ashley_polvon2@oxy.com":
-        #     print()
-
-    # list_of_uids = [
-    #     "12564e55-38e7-4502-b826-ba036a9fe989"
-    # ]
-    # if mapped["codeone_person_uid"] in list_of_uids:
-    #     print()
-    if "phone" in mapped:
-        phone_number = mapped["phone"].replace("-", "").strip().replace(".", "")
-        country_code = mapped.get("hs_country_code", "").strip()
-        area_code = mapped.get("phone_area_code", "").strip()
-        extension = mapped.get("phone_extension", "") if mapped.get("phone_extension") is not None else ""
-        if "+" not in country_code and country_code:
-            country_code = f"+{country_code} "
-        mapped["phone"] = f"{country_code}{area_code}{phone_number}{extension}".strip().replace(" ", "")
-    try:
-        if "bookers" in person:
-            data = person["bookers"][0]
-            if "bookerUid" in data:
-                mapped["codeone_roles"] = "Booker"
-                mapped["codeone_booker_uid"] = data["bookerUid"]
-
-            if "bookings" in data and data["bookings"]:
-                booking = data["bookings"][0]
-                if "stays" in booking and booking["stays"] is not None:
-                    stay_data = booking["stays"][0]
-                    if "salesRepresentativeU" in stay_data:
-                        mapped["codeone_sales_rep_user_uid"] = stay_data["salesRepresentativeU"].get("personUid", "")
-                        mapped["sales_rep_firstname"] = stay_data["salesRepresentativeU"].get("personU", {}).get("firstName", "").strip()
-                        mapped["sales_rep_lastname"] = stay_data["salesRepresentativeU"].get("personU", {}).get("lastName", "").strip()
-    except Exception as e:
-        no_bookings = True
-
-    if "residents" in person and len(person["residents"]) > 0:
-        if "residentUid" in person["residents"][0]:
-            mapped["codeone_resident_uid"] = person["residents"][0]["residentUid"]
-            if "codeone_roles" in mapped:
-                mapped["codeone_roles"] += ";Resident"
-            else:
-                mapped["codeone_roles"] = "Resident"
-            if "stayU" in person["residents"][0]:
-                for stay_red in person["residents"]:
-                    stay = stay_red["stayU"] if stay_red["stayU"] is not None else {}
-                    if "salesRepresentativeU" in stay and stay["salesRepresentativeU"] is not None:
-                        mapped["codeone_sales_rep_user_uid"] = stay["salesRepresentativeU"].get("personUid", "")
-                        mapped["sales_rep_firstname"] = stay["salesRepresentativeU"].get("personU", {}).get("firstName", "").strip()
-                        mapped["sales_rep_lastname"] = stay["salesRepresentativeU"].get("personU", {}).get("lastName", "").strip()
-
-    if "sales_rep_firstname" in mapped and "sales_rep_lastname" in mapped:
-        for owner_index, owner in enumerate(deal_owners):
-            if (
-                    owner.get("firstName") == mapped["sales_rep_firstname"].strip()
-                    and owner.get("lastName") == mapped["sales_rep_lastname"].strip()
-            ):
-                mapped["hubspot_owner_id"] = owner.get("userId")
-                break
-            if owner_index == len(deal_owners) - 1:
-                print()
-    return normalize_emails(mapped)
-
-
-def map_stay(stay: Dict[str, Any], deal_owners) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
-    """
-    Map a stay to a "stay contact" HS service object + a list of resident links:
-    [{codeone_person_uid, codeone_stay_uid}, ...]
-    """
-    mapped = generic_map(stay, "contact_from_stay")
-
-    if "sales_representative_firstname" in mapped and "sales_representative_lastname" in mapped:
-        for owner_index, owner in enumerate(deal_owners):
-            if (
-                owner.get("firstName") == mapped["sales_representative_firstname"].strip()
-                and owner.get("lastName") == mapped["sales_representative_lastname"].strip()
-            ):
-                mapped["hubspot_owner_id"] = owner.get("userId")
-                break
-            if owner_index == len(deal_owners) - 1:
-                print()
-    # Dealname-like hs_name
-    total_amount = 0
-    for charge in stay.get("charges", []):
-        total_amount += charge.get("amount", 0)
-
-    unit_name = get_nested_value(stay, "stayableU.name")
-    group_name = get_nested_value(stay, "stayableU.stayableGroupU.name")
-    start_raw = get_nested_value(stay, "start")
-    end_raw = get_nested_value(stay, "end")
-    residents = stay.get("residents", [])
-    resident_data = residents[0].get("personU", {}) if residents else {}
-    first_name = resident_data.get("firstName", "")
-    last_name = resident_data.get("lastName", "")
-    # stay_rate = stay["stays"][0].get("rate", {}) if stay.get("stays") else {}
-    # mapped["booking_amount"] = stay_rate
-    mapped["stay_start_date"] = datetime.fromisoformat(start_raw.replace("Z", "+00:00"))
-    mapped["stay_end_date"] = datetime.fromisoformat(end_raw.replace("Z", "+00:00"))
-    mapped["hs_amount_paid"] = total_amount
-    # mapped["amount"] = stay_rate
-    mapped["codeone_primary_resident_firstname"] = first_name
-    mapped["codeone_primary_resident_lastname"] = last_name
-    mapped["codeone_stay_primary_resident_uid"] = resident_data.get("personUid", "")
-    if resident_data.get("primaryEmailAddressU") is not None:
-        mapped["codeone_primary_resident_email"] = resident_data.get("primaryEmailAddressU", {}).get("address", "")
-
-    # if mapped["codeone_stay_uid"] == "a4ca0880-2e09-4bd4-8226-6c43e0b688e0":
-    #     print()
-
-     # Dealname-like hs_name
-
-    parts: List[str] = []
-    if unit_name not in (None, MISSING):
-        parts.append(str(unit_name).strip())
-    if group_name not in (None, MISSING):
-        parts.append(str(group_name).strip())
-
-    date_part = combine_dates_numeric(start_raw, end_raw)
-    # date_start = start_raw.split("T")[0].replace("-", "/")
-    # date_end = end_raw.split("T")[0].replace("-", "/")
-    # date_part = f"{date_start} - {date_end}"
-    if date_part:
-        parts.append(date_part)
-
-    if parts:
-        mapped["hs_name"] = " | ".join(parts)
-
-    # Static pipeline stage
-    mapped["hs_pipeline_stage"] = "8e2b21d0-7a90-4968-8f8c-a8525cc49c70"
-
-    # Collect residents from the stay
-    residents: List[Dict[str, Any]] = []
-    uid_resident_list = ""
-    for resident in stay.get("residents", []):
-        resident_uid = resident.get("personU", {}).get("personUid")
-        if resident_uid:
-            residents.append(
-                {
-                    "codeone_person_uid": resident_uid,
-                    "codeone_stay_uid": stay.get("stayUid"),
-                }
-            )
-            if resident_uid != mapped["codeone_stay_primary_resident_uid"]:
-                uid_resident_list += resident_uid + ","
-    if uid_resident_list.endswith(","):
-        uid_resident_list = uid_resident_list[:-1]
-    mapped["codeone_secondary_residents_uid"] = uid_resident_list
-    return mapped, residents
-
-
-def map_booking(booking: Dict[str, Any], deal_owners) -> Dict[str, Any]:
-    """
-    Maps booking to a HS deal-like object.
-    Expects PROPERTY_MAP["contact_from_booking"] mapping.
-    """
-    mapped = generic_map(booking, "contact_from_booking")
-    if "salesRepresentativeU" in booking and booking["salesRepresentativeU"] is not None:
-        print()
-
-    list_of_uids = [
-        "c7421568-05e7-4806-b9f4-d97c9909a125"
-    ]
-    if mapped["codeone_booking_uid"] in list_of_uids:
-        print()
-
-    sales_representative = booking.get("stays", [{}])[0].get("salesRepresentativeU", {})
-    if sales_representative:
-        for owner_index, owner in enumerate(deal_owners):
-            if (
-                owner.get("firstName") == sales_representative.get("personU").get("firstName").strip()
-                and owner.get("lastName") == sales_representative.get("personU").get("lastName").strip()
-            ):
-                mapped["hubspot_owner_id"] = owner.get("userId")
-                mapped["sales_rep_firstname"] = f"{sales_representative.get('personU').get('firstName', '')}"
-                mapped["sales_rep_lastname"] = f"{sales_representative.get('personU').get('lastName', '')}"
-                mapped["codeone_sales_rep_email"] = owner.get("email")
-                break
-            if owner_index == len(deal_owners) - 1:
-                print()
-
-    unit_name = mapped.get("business_unit")
-    start_raw = get_nested_value(booking, "start")
-    end_raw = get_nested_value(booking, "end")
-    residents = booking.get("residents", [])
-    resident_data = residents[0].get("personU", {}) if residents else {}
-    first_name = resident_data.get("firstName", "")
-    last_name = resident_data.get("lastName", "")
-    stay_rate = booking["stays"][0].get("rate", {}) if booking.get("stays") else {}
-    # mapped["booking_amount"] = stay_rate
-    mapped["amount"] = stay_rate
-    mapped["codeone_primary_resident_firstname"] = first_name
-    mapped["codeone_primary_resident_lastname"] = last_name
-    mapped["codeone_stay_primary_resident_uid"] = resident_data.get("personUid", "")
-
-    mapped["booking_start_date"] = datetime.fromisoformat(start_raw.replace("Z", "+00:00"))
-    mapped["booking_end_date"] = datetime.fromisoformat(end_raw.replace("Z", "+00:00"))
-    # mapped["codeone_stay_primary_resident_uid"] = ""
-    if resident_data.get("primaryEmailAddressU") is not None:
-        mapped["codeone_primary_resident_email"] = resident_data.get("primaryEmailAddressU", {}).get("address", "")
-    if mapped["codeone_booking_uid"] == "0f24e405-3545-461f-ae70-96db3295d8f4":
-        print()
-
-     # Dealname-like hs_name
-
-    total_amount = 0
-    stays = booking.get("stays", [])
-    for stay in stays:
-        for charge in stay.get("charges", []):
-            if charge.get("description", "").lower() == "housekeeping /reset":
-                continue
-            total_amount += charge.get("amount", 0)
-    mapped["amount"] = total_amount
-
-    parts: List[str] = []
-    if first_name or last_name:
-        full_name = f"{first_name} {last_name}".strip()
-        parts.append(full_name)
-    if unit_name not in (None, MISSING):
-        parts.append(str(unit_name).strip())
-
-    date_part = combine_dates_numeric(start_raw, end_raw)
-    if date_part:
-        parts.append(date_part)
-
-    if parts:
-        mapped["dealname"] = " | ".join(parts)
-
-    return mapped
