@@ -8,7 +8,7 @@
   "state": "state",
   "postalCode": "zip",
   "phoneNumber": "phone",
-  "mobilePhoneNumber": "mobile_phone_number",
+  "mobilePhoneNumber": "mobilephone",
   "email": "bc_emails",
   "lastModifiedDateTime": "last_date_modified",
   "id": "bc_unique_id",

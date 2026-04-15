@@ -267,7 +267,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     from datetime import datetime, timedelta, timezone
 
     # example: last 24 hours
-    since = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
+    since = (datetime.now(timezone.utc) - timedelta(days=8000)).isoformat()
     params = {
         "$select": "*",
         "$filter": f"lastModifiedDateTime ge {since}"
@@ -284,9 +284,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     customers = random.sample(customers_2, len(customers_2))
     # customers = customers_1[::-1]  # process oldest customers first
     companies = []
+    custom_index =231
     for cust_ind, customer in enumerate(customers):
         customer_number = customer.get("number")
         customer_id = customer.get("id")
+        custom_index += cust_ind
 
         result_dba = next((c for c in dba_data_records if c.get("id") == customer_id), None)
 
@@ -336,7 +338,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # merged["business_central_url"] = "https://businesscentral.dynamics.com/55e10fec-4486-496b-842d-cc54c37e7d74/Production?company=JACKIE%20LONDON&page=22&filter="
         companies.append(merged)
         # if len(companies) >= 25 or cust_ind == len(customers) - 1:
-        if len(companies) >= 500:
+        if len(companies) >= 5:
             HEADERS = {"Authorization": f"Bearer {hs_token}"}
             payload_url, payload = prepare_companies_batch_payload(companies, unique_prop="bc_unique_id_2")
             results = send_batch_upsert(payload_url, payload, hs_token)

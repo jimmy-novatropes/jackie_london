@@ -150,8 +150,6 @@ def map_apartment(group: Dict[str, Any]) -> Dict[str, Any]:
         mapped["hs_address_2"] = addr2
         mapped["address_3"] = addr3
 
-
-
     return mapped
 
 
@@ -159,170 +157,129 @@ def map_contact(person: Dict[str, Any], deal_owners) -> Dict[str, Any]:
     mapped = generic_map(person)
     mapped["firstname"] = person["displayName"].split(" ")[0].strip() if person.get("displayName") else ""
     mapped["lastname"] = " ".join(person["displayName"].split(" ")[1:]).strip() if person.get("displayName") and len(person["displayName"].split(" ")) > 1 else ""
+
+    if ";" in mapped.get("email", ""):
+        mapped["email"] = mapped["email"].split(";")[0].strip()
+        mapped["work_email"] = mapped["email"].split(";")[1].strip() if len(mapped["email"].split(";")) > 1 else None
+    try:
+        if "phone" in mapped and mapped["phone"]:
+            mapped["mobile_phone_number"] = mapped["phone"]
+            mapped["phone"], country = format_phone_number(mapped["phone"])
+            mapped["hs_country_region_code"] = country
+            # print(mapped["phone"], country)
+
+        if "mobilephone" in mapped and mapped["mobilephone"]:
+            mapped["mobile_phone_number"] = mapped["mobilephone"]
+            mapped["mobilephone"], country = format_phone_number(mapped["mobilephone"])
+            mapped["hs_country_region_code"] = country
+            # print(mapped["mobilephone"], country)
+
+            if "phone" not in mapped or not mapped["phone"]:
+                mapped["phone"] = mapped["mobilephone"]
+    except Exception as e:
+        print(f"Error formatting phone number '{mapped.get('phone')}' for contact '{mapped.get('displayName', '')}': {e}")
+        print()
+
     return mapped
 
 
-def map_stay(stay: Dict[str, Any], deal_owners) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
-    """
-    Map a stay to a "stay contact" HS service object + a list of resident links:
-    [{codeone_person_uid, codeone_stay_uid}, ...]
-    """
-    mapped = generic_map(stay, "contact_from_stay")
+import re
 
-    if "sales_representative_firstname" in mapped and "sales_representative_lastname" in mapped:
-        for owner_index, owner in enumerate(deal_owners):
-            if (
-                owner.get("firstName") == mapped["sales_representative_firstname"].strip()
-                and owner.get("lastName") == mapped["sales_representative_lastname"].strip()
-            ):
-                mapped["hubspot_owner_id"] = owner.get("userId")
+from typing import Callable
+
+def format_phone_number(phone: str, default_country: str = "US") -> tuple[str, str]:
+    """
+    Returns (formatted_number, country_name).
+    Defaults to US if no country code is detected.
+    """
+    phone = phone.strip()
+    has_plus = phone.startswith('+')
+    digits = re.sub(r'\D', '', phone)
+
+    # code -> (country_name, expected_local_digits, format_fn)
+    country_formats: dict[str, tuple[str, int, Callable[[str], str]]] = {
+        # "1":   ("US/CA", 10, lambda d: f"({d[:3]}) {d[3:6]}-{d[6:]}"),
+        "1": ("US/CA", 10, lambda d: f"+1 ({d[:3]}) {d[3:6]}-{d[6:]}"),
+        "44":  ("UK",    10, lambda d: f"+44 {d[:4]} {d[4:7]} {d[7:]}"),
+        "61":  ("AU",     9, lambda d: f"+61 {d[:1]} {d[1:5]} {d[5:]}"),
+        "64":  ("NZ",     9, lambda d: f"+64 {d[:2]} {d[2:5]} {d[5:]}"),
+        "49":  ("DE",    10, lambda d: f"+49 {d[:3]} {d[3:7]} {d[7:]}"),
+        "33":  ("FR",    10, lambda d: f"+33 {d[:1]} {d[1:3]} {d[3:5]} {d[5:7]} {d[7:]}"),
+        "34":  ("ES",     9, lambda d: f"+34 {d[:3]} {d[3:6]} {d[6:]}"),
+        "39":  ("IT",    10, lambda d: f"+39 {d[:3]} {d[3:7]} {d[7:]}"),
+        "81":  ("JP",    10, lambda d: f"+81 {d[:2]} {d[2:6]} {d[6:]}"),
+        "86":  ("CN",    11, lambda d: f"+86 {d[:3]} {d[3:7]} {d[7:]}"),
+        "91":  ("IN",    10, lambda d: f"+91 {d[:5]} {d[5:]}"),
+        "27":  ("ZA",     9, lambda d: f"+27 {d[:2]} {d[2:5]} {d[5:]}"),
+        "31":  ("NL",     9, lambda d: f"+31 {d[:2]} {d[2:5]} {d[5:]}"),
+        # "32":  ("BE",     9, lambda d: f"+32 {d[:3]} {d[3:6]} {d[6:]}"),
+        "41":  ("CH",     9, lambda d: f"+41 {d[:2]} {d[2:5]} {d[5:7]} {d[7:]}"),
+        "45":  ("DK",     8, lambda d: f"+45 {d[:2]} {d[2:4]} {d[4:6]} {d[6:]}"),
+        "46":  ("SE",     9, lambda d: f"+46 {d[:2]} {d[2:5]} {d[5:]}"),
+        "47":  ("NO",     8, lambda d: f"+47 {d[:3]} {d[3:5]} {d[5:]}"),
+        # --- North / Central America ---
+        "52":  ("MX",    10, lambda d: f"+52 {d[:2]} {d[2:6]} {d[6:]}"),
+        "501": ("BZ",     7, lambda d: f"+501 {d[:3]} {d[3:]}"),
+        "502": ("GT",     8, lambda d: f"+502 {d[:4]} {d[4:]}"),
+        "503": ("SV",     8, lambda d: f"+503 {d[:4]} {d[4:]}"),
+        "504": ("HN",     8, lambda d: f"+504 {d[:4]} {d[4:]}"),
+        "505": ("NI",     8, lambda d: f"+505 {d[:4]} {d[4:]}"),
+        "506": ("CR",     8, lambda d: f"+506 {d[:4]} {d[4:]}"),
+        "507": ("PA",     8, lambda d: f"+507 {d[:4]} {d[4:]}"),
+        # --- South America ---
+        "51":  ("PE",     9, lambda d: f"+51 {d[:3]} {d[3:6]} {d[6:]}"),
+        "54":  ("AR",    10, lambda d: f"+54 {d[:2]} {d[2:6]} {d[6:]}"),
+        "55":  ("BR",    11, lambda d: f"+55 {d[:2]} {d[2:7]} {d[7:]}"),
+        "56":  ("CL",     9, lambda d: f"+56 {d[:1]} {d[1:5]} {d[5:]}"),
+        "57":  ("CO",    10, lambda d: f"+57 {d[:3]} {d[3:7]} {d[7:]}"),
+        "58":  ("VE",    10, lambda d: f"+58 {d[:3]} {d[3:7]} {d[7:]}"),
+        "591": ("BO",     8, lambda d: f"+591 {d[:1]} {d[1:4]} {d[4:]}"),
+        # "592": ("GY",     7, lambda d: f"+592 {d[:3]} {d[3:]}"),
+        "593": ("EC",     9, lambda d: f"+593 {d[:2]} {d[2:6]} {d[6:]}"),
+        "594": ("GF",     9, lambda d: f"+594 {d[:3]} {d[3:6]} {d[6:]}"),
+        "595": ("PY",     9, lambda d: f"+595 {d[:3]} {d[3:6]} {d[6:]}"),
+        "597": ("SR",     7, lambda d: f"+597 {d[:3]} {d[3:]}"),
+        "598": ("UY",     8, lambda d: f"+598 {d[:4]} {d[4:]}"),
+        # Add to country_formats:
+        "372": ("EE", 8, lambda d: f"+372 {d[:4]} {d[4:]}"),
+        "233": ("GH", 9, lambda d: f"+233 {d[:2]} {d[2:5]} {d[5:]}"),
+    }
+
+    detected_code = None
+    local_digits = digits
+
+    if has_plus or len(digits) > 10:
+        for code in sorted(country_formats.keys(), key=len, reverse=True):
+            if digits.startswith(code):
+                detected_code = code
+                local_digits = digits[len(code):]
                 break
-            if owner_index == len(deal_owners) - 1:
-                print()
-    # Dealname-like hs_name
-    total_amount = 0
-    for charge in stay.get("charges", []):
-        total_amount += charge.get("amount", 0)
 
-    unit_name = get_nested_value(stay, "stayableU.name")
-    group_name = get_nested_value(stay, "stayableU.stayableGroupU.name")
-    start_raw = get_nested_value(stay, "start")
-    end_raw = get_nested_value(stay, "end")
-    residents = stay.get("residents", [])
-    resident_data = residents[0].get("personU", {}) if residents else {}
-    first_name = resident_data.get("firstName", "")
-    last_name = resident_data.get("lastName", "")
-    # stay_rate = stay["stays"][0].get("rate", {}) if stay.get("stays") else {}
-    # mapped["booking_amount"] = stay_rate
-    mapped["stay_start_date"] = datetime.fromisoformat(start_raw.replace("Z", "+00:00"))
-    mapped["stay_end_date"] = datetime.fromisoformat(end_raw.replace("Z", "+00:00"))
-    mapped["hs_amount_paid"] = total_amount
-    # mapped["amount"] = stay_rate
-    mapped["codeone_primary_resident_firstname"] = first_name
-    mapped["codeone_primary_resident_lastname"] = last_name
-    mapped["codeone_stay_primary_resident_uid"] = resident_data.get("personUid", "")
-    if resident_data.get("primaryEmailAddressU") is not None:
-        mapped["codeone_primary_resident_email"] = resident_data.get("primaryEmailAddressU", {}).get("address", "")
+    if not detected_code:
+        if default_country == "US":
+            if len(digits) == 11 and digits.startswith('1'):
+                detected_code = "1"
+                local_digits = digits[1:]
+            else:
+                detected_code = "1"
+                local_digits = digits
+        else:
+            raise ValueError(f"Could not detect country code for: '{phone}'")
 
-    # if mapped["codeone_stay_uid"] == "a4ca0880-2e09-4bd4-8226-6c43e0b688e0":
-    #     print()
+    if detected_code not in country_formats:
+        return f"+{detected_code} {local_digits}", f"Unknown (+{detected_code})"
 
-     # Dealname-like hs_name
+    country_name, expected_len, fmt_fn = country_formats[detected_code]
 
-    parts: List[str] = []
-    if unit_name not in (None, MISSING):
-        parts.append(str(unit_name).strip())
-    if group_name not in (None, MISSING):
-        parts.append(str(group_name).strip())
+    if len(local_digits) != expected_len:
+        # Wrong length for detected country — try falling back to US before raising
+        us_local = digits[1:] if (len(digits) == 11 and digits.startswith('1')) else digits
+        if default_country == "US" and len(us_local) == 10:
+            _, _, us_fmt = country_formats["1"]
+            return us_fmt(us_local), "US/CA (fallback)"
+        raise ValueError(
+            f"Invalid number length for country +{detected_code} ({country_name}): "
+            f"got {len(local_digits)} digits, expected {expected_len}"
+        )
 
-    date_part = combine_dates_numeric(start_raw, end_raw)
-    # date_start = start_raw.split("T")[0].replace("-", "/")
-    # date_end = end_raw.split("T")[0].replace("-", "/")
-    # date_part = f"{date_start} - {date_end}"
-    if date_part:
-        parts.append(date_part)
-
-    if parts:
-        mapped["hs_name"] = " | ".join(parts)
-
-    # Static pipeline stage
-    mapped["hs_pipeline_stage"] = "8e2b21d0-7a90-4968-8f8c-a8525cc49c70"
-
-    # Collect residents from the stay
-    residents: List[Dict[str, Any]] = []
-    uid_resident_list = ""
-    for resident in stay.get("residents", []):
-        resident_uid = resident.get("personU", {}).get("personUid")
-        if resident_uid:
-            residents.append(
-                {
-                    "codeone_person_uid": resident_uid,
-                    "codeone_stay_uid": stay.get("stayUid"),
-                }
-            )
-            if resident_uid != mapped["codeone_stay_primary_resident_uid"]:
-                uid_resident_list += resident_uid + ","
-    if uid_resident_list.endswith(","):
-        uid_resident_list = uid_resident_list[:-1]
-    mapped["codeone_secondary_residents_uid"] = uid_resident_list
-    return mapped, residents
-
-
-def map_booking(booking: Dict[str, Any], deal_owners) -> Dict[str, Any]:
-    """
-    Maps booking to a HS deal-like object.
-    Expects PROPERTY_MAP["contact_from_booking"] mapping.
-    """
-    mapped = generic_map(booking, "contact_from_booking")
-    if "salesRepresentativeU" in booking and booking["salesRepresentativeU"] is not None:
-        print()
-
-    list_of_uids = [
-        "c7421568-05e7-4806-b9f4-d97c9909a125"
-    ]
-    if mapped["codeone_booking_uid"] in list_of_uids:
-        print()
-
-    sales_representative = booking.get("stays", [{}])[0].get("salesRepresentativeU", {})
-    if sales_representative:
-        for owner_index, owner in enumerate(deal_owners):
-            if (
-                owner.get("firstName") == sales_representative.get("personU").get("firstName").strip()
-                and owner.get("lastName") == sales_representative.get("personU").get("lastName").strip()
-            ):
-                mapped["hubspot_owner_id"] = owner.get("userId")
-                mapped["sales_rep_firstname"] = f"{sales_representative.get('personU').get('firstName', '')}"
-                mapped["sales_rep_lastname"] = f"{sales_representative.get('personU').get('lastName', '')}"
-                mapped["codeone_sales_rep_email"] = owner.get("email")
-                break
-            if owner_index == len(deal_owners) - 1:
-                print()
-
-    unit_name = mapped.get("business_unit")
-    start_raw = get_nested_value(booking, "start")
-    end_raw = get_nested_value(booking, "end")
-    residents = booking.get("residents", [])
-    resident_data = residents[0].get("personU", {}) if residents else {}
-    first_name = resident_data.get("firstName", "")
-    last_name = resident_data.get("lastName", "")
-    stay_rate = booking["stays"][0].get("rate", {}) if booking.get("stays") else {}
-    # mapped["booking_amount"] = stay_rate
-    mapped["amount"] = stay_rate
-    mapped["codeone_primary_resident_firstname"] = first_name
-    mapped["codeone_primary_resident_lastname"] = last_name
-    mapped["codeone_stay_primary_resident_uid"] = resident_data.get("personUid", "")
-
-    mapped["booking_start_date"] = datetime.fromisoformat(start_raw.replace("Z", "+00:00"))
-    mapped["booking_end_date"] = datetime.fromisoformat(end_raw.replace("Z", "+00:00"))
-    # mapped["codeone_stay_primary_resident_uid"] = ""
-    if resident_data.get("primaryEmailAddressU") is not None:
-        mapped["codeone_primary_resident_email"] = resident_data.get("primaryEmailAddressU", {}).get("address", "")
-    if mapped["codeone_booking_uid"] == "0f24e405-3545-461f-ae70-96db3295d8f4":
-        print()
-
-     # Dealname-like hs_name
-
-    total_amount = 0
-    stays = booking.get("stays", [])
-    for stay in stays:
-        for charge in stay.get("charges", []):
-            if charge.get("description", "").lower() == "housekeeping /reset":
-                continue
-            total_amount += charge.get("amount", 0)
-    mapped["amount"] = total_amount
-
-    parts: List[str] = []
-    if first_name or last_name:
-        full_name = f"{first_name} {last_name}".strip()
-        parts.append(full_name)
-    if unit_name not in (None, MISSING):
-        parts.append(str(unit_name).strip())
-
-    date_part = combine_dates_numeric(start_raw, end_raw)
-    if date_part:
-        parts.append(date_part)
-
-    if parts:
-        mapped["dealname"] = " | ".join(parts)
-
-    return mapped
+    return fmt_fn(local_digits), country_name

@@ -104,16 +104,33 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         from datetime import datetime, timedelta, timezone
 
         # example: last 24 hours
-        since = (datetime.now(timezone.utc) - timedelta(days=6)).isoformat()
+        since = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+        # until = (datetime.now(timezone.utc) - timedelta(days=600)).isoformat()
+
+        # days_since = 400
+        # days_range = 15
+        # days_until = days_since - days_range
+
+        #
+        # while days_until > 0:
+        #     since = (datetime.now(timezone.utc) - timedelta(days=days_since)).isoformat()
+        #     until = (datetime.now(timezone.utc) - timedelta(days=days_until)).isoformat()
+
 
         params = {
             "$select": "*",
             "$filter": f"lastModifiedDateTime ge {since}"
         }
 
+        # params = {
+        #     "$select": "*",
+        #     "$filter": f"lastModifiedDateTime ge {since} and lastModifiedDateTime le {until}"
+        # }
+
         contacts_resp = requests.get(f"{base}/companies({company_id})/contacts", headers=headers, timeout=30, params=params)
         contacts_resp.raise_for_status()
         contacts = contacts_resp.json().get("value", [])
+        print("Contacts:", len(contacts))
 
         HEADERS = {"Authorization": f"Bearer {hs_token}"}
 
@@ -126,7 +143,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         payload_url, payload = prepare_contacts_batch_payload(bc_data, unique_prop="bc_unique_id")
 
-        send_batch_upsert(payload_url, payload, hs_token)
+        send_batch_upsert(payload_url, payload, hs_token, batch_size=1)
+        # days_since -= days_range
+        # days_until -= days_range
 
         return {
             "company_id": company_id,
@@ -136,11 +155,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "message": f"Processed  cards across  stores",
                 "results_completed": True
             })
-                    # "next_link": next_link,
-            # "processed": processed,
-            # "total_processed": processed + event.get("total_processed", 0),
-            # "done": next_link is None,
-        }
+                # "next_link": next_link,
+        # "processed": processed,
+        # "total_processed": processed + event.get("total_processed", 0),
+        # "done": next_link is None,
+    }
     except Exception as e:
         print("❌ Error in lambda_handler:", e)
         return {"error": str(e)}
