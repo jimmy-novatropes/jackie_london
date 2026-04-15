@@ -161,7 +161,7 @@ def map_company(company: Dict[str, Any], deal_owners) -> Dict[str, Any]:
 
     mapped = generic_map(company)
     mapped["name"] = mapped.get("customer_name", "").strip()
-    mapped["payment_terms"] = mapped.get("paymentTerms").lower().replace(" ", "_") if mapped.get("paymentTerms") else None
+    mapped["payment_terms"] = mapped.get("payment_terms").lower().replace(" ", "_") if mapped.get("payment_terms") else None
 
     if "startdate" in mapped and mapped["startdate"]:
         mapped["startdate"] = to_hubspot_date_safe(mapped.get("startdate"), "%Y-%m-%d")
