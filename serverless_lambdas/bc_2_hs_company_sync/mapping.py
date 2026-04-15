@@ -153,7 +153,11 @@ def combine_dates_numeric(start: str | None, end: str | None) -> str | None:
 
     return None
 
-
+def fmt_number(value) -> str:
+    try:
+        return f"{float(value):,.2f}"
+    except (TypeError, ValueError):
+        return ""
 # --------------------------------------------------------------------
 # Object-specific mappers
 # --------------------------------------------------------------------
@@ -172,6 +176,13 @@ def map_company(company: Dict[str, Any], deal_owners) -> Dict[str, Any]:
 
     if "language_code" in mapped and mapped["language_code"]:
         print()
+    if "balance_due" in mapped and mapped["balance_due"]:
+        mapped["balance_due"] = fmt_number(mapped["balance_due"])
+    if "balance" in mapped and mapped["balance"]:
+        mapped["balance"] = fmt_number(mapped["balance"])
+    if "credit_limit" in mapped and mapped["credit_limit"]:
+        mapped["credit_limit"] = fmt_number(mapped["credit_limit"])
+
     return mapped
 
 
