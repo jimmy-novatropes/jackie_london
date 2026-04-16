@@ -16,7 +16,7 @@ PASSWORD: str = CREDS.get("GRAPHQL_PASSWORD", "")
 
 lambda_client = boto3.client("lambda")
 
-# TARGET_LAMBDA = "arn:aws:lambda:us-east-1:637423516866:function:hubspot-changes-2-netsuite"
+TARGET_LAMBDA = "arn:aws:lambda:us-east-1:630977122946:function:hubspot-2-bc-logic-sync"
 
 
 def lambda_handler(event, context):
@@ -26,11 +26,11 @@ def lambda_handler(event, context):
         events = json.loads(body) if isinstance(body, str) else body
         object_id = events[0].get("objectId") if events else None
 
-        # lambda_client.invoke(
-        #     FunctionName=TARGET_LAMBDA,
-        #     InvocationType="Event",  # async
-        #     Payload=json.dumps({"records": events})
-        # )
+        lambda_client.invoke(
+            FunctionName=TARGET_LAMBDA,
+            InvocationType="Event",  # async
+            Payload=json.dumps({"records": events})
+        )
         return {
             "statusCode": 200,
             # "body": json.dumps({"status": "ok", "message": f"Invoked {TARGET_LAMBDA} with {len(events)} events"})
