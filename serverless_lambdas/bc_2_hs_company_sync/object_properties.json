@@ -28,6 +28,7 @@
   "instagram": "instagram",
   "outOfBusiness": "out_of_business",
   "outOfBusinessDate": "out_of_business_date",
-  "leadSource": "lead_source"
+  "leadSource": "lead_source",
+  "customerType": "customer_type"
 
 }
