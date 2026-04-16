@@ -16,8 +16,8 @@ from upsert_functions import prepare_companies_batch_payload, send_batch_upsert
 HUBSPOT_API = "https://api.hubapi.com"
 BC_ROOT = "https://api.businesscentral.dynamics.com/v2.0"
 COMPANY_NAME = "JACKIE LONDON"
-BATCH_SIZE = 50
-PAST_DAYS = 3
+BATCH_SIZE = 1000
+PAST_DAYS = 400
 
 # ── Credentials ────────────────────────────────────────────────────────────────
 def _load_creds() -> Dict[str, Any]:
