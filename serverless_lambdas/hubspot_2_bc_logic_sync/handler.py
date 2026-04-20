@@ -1,17 +1,19 @@
-import json
-from requests_oauthlib import OAuth1Session
-# from c1_webhook_logic_handlers import handle_contact, handle_company, handle_deal, handle_line_item
-from typing import List, Dict
+from typing import List
 from collections import defaultdict
-
+import json
 
 from credentials_load import (is_running_in_lambda, load_secrets, load_secrets_locally)
 from typing import Dict, Any
+from handle_deals import handle_deal
+from handle_companies import handle_company
+from handle_contacts import handle_contact
+
 
 def load_jackielondon_creds() -> Dict[str, Any]:
     if is_running_in_lambda():
         return load_secrets("JACKIE_LONDON_KEYS")
     return load_secrets_locally("JACKIE_LONDON_KEYS")
+
 
 CREDS = load_jackielondon_creds()
 HUBSPOT_TOKEN: str = CREDS.get("HUBSPOT_TOKEN", "")
@@ -26,12 +28,10 @@ creds = {
 # NetSuite helpers
 # --------------------------------------------------
 
-
-
 ROUTER = {
-    # "contact": handle_contact,
-    # "company": handle_company,
-    # "deal": handle_deal,
+    "contact": handle_contact,
+    "company": handle_company,
+    "deal": handle_deal,
     # "line_item": handle_line_item,
 }
 
@@ -57,25 +57,6 @@ def process_events(event):
             grouped["unknown"].append(f"⚠️ No handler for subscriptionType: {sub_type}")
 
 
-
-# --------------------------------------------------
-# Lambda
-# --------------------------------------------------
-# def lambda_handler(event, context):
-#
-#     try:
-#         body = event.get("body", "[]")
-#         events = json.loads(body) if isinstance(body, str) else body
-#         process_events(events)
-#         return {"statusCode": 200, "body": json.dumps({"status": "ok"})}
-#     except Exception as e:
-#         print(f"❌ Error processing events: {e}")
-#         return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
-
-
-import json
-
-
 def lambda_handler(event, context):
     try:
         # Case 1: Lambda-to-Lambda (your new flow)
@@ -85,6 +66,7 @@ def lambda_handler(event, context):
         # Case 2: API Gateway (existing behavior)
         else:
             body = event.get("body", "[]")
+            print(body)
             events = json.loads(body) if isinstance(body, str) else body
 
         # normalize to list
@@ -92,7 +74,6 @@ def lambda_handler(event, context):
             events = [events]
 
         print(f"Received {len(events)} events, {events}")
-        return
         process_events(events)
 
         return {
