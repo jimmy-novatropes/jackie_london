@@ -91,6 +91,8 @@ def lambda_handler(event, context):
         if isinstance(events, dict):
             events = [events]
 
+        print(f"Received {len(events)} events")
+        return
         process_events(events)
 
         return {
