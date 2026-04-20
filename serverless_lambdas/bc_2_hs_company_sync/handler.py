@@ -17,7 +17,7 @@ HUBSPOT_API = "https://api.hubapi.com"
 BC_ROOT = "https://api.businesscentral.dynamics.com/v2.0"
 COMPANY_NAME = "JACKIE LONDON"
 BATCH_SIZE = 1000
-PAST_DAYS = 400
+PAST_DAYS = 5
 
 # ── Credentials ────────────────────────────────────────────────────────────────
 def _load_creds() -> Dict[str, Any]:

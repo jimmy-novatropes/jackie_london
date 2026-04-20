@@ -143,7 +143,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         payload_url, payload = prepare_contacts_batch_payload(bc_data, unique_prop="bc_unique_id")
 
-        send_batch_upsert(payload_url, payload, hs_token, batch_size=1)
+        send_batch_upsert(payload_url, payload, hs_token, batch_size=100)
         # days_since -= days_range
         # days_until -= days_range
 

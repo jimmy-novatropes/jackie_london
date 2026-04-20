@@ -164,13 +164,24 @@ def map_contact(person: Dict[str, Any], deal_owners) -> Dict[str, Any]:
     try:
         if "phone" in mapped and mapped["phone"]:
             mapped["mobile_phone_number"] = mapped["phone"]
-            mapped["phone"], country = format_phone_number(mapped["phone"])
+            # mapped["hs_whatsapp_phone_number"] = mapped["phone"]
+            mapped["hs_whatsapp_phone_number"] = to_e164_us(mapped["phone"])
+            mapped["phone"] = to_e164_us(mapped["phone"])
+
+
+            _, country = format_phone_number(mapped["phone"])
+            # mapped["phone"]= mapped["phone"].strip()
             mapped["hs_country_region_code"] = country
             # print(mapped["phone"], country)
 
         if "mobilephone" in mapped and mapped["mobilephone"]:
             mapped["mobile_phone_number"] = mapped["mobilephone"]
-            mapped["mobilephone"], country = format_phone_number(mapped["mobilephone"])
+            mapped["hs_whatsapp_phone_number"] = to_e164_us(mapped["mobilephone"])
+            mapped["mobilephone"] = to_e164_us(mapped["mobilephone"])
+
+            # mapped["mobilephone"], country = format_phone_number(mapped["mobilephone"])
+            # mapped["mobilephone"], country = format_phone_number(mapped["mobilephone"])
+
             mapped["hs_country_region_code"] = country
             # print(mapped["mobilephone"], country)
 
@@ -186,6 +197,30 @@ def map_contact(person: Dict[str, Any], deal_owners) -> Dict[str, Any]:
 import re
 
 from typing import Callable
+
+
+import re
+
+def to_e164_us(raw):
+    if not raw:
+        return ''
+    # Take only the first number if multiple are jammed together
+    first = re.split(r'[;,/\n]', str(raw))[0]
+    # Keep digits only; separately capture an extension if present
+    ext_match = re.search(r'(?:ext|x|extension)\.?\s*(\d+)', first, flags=re.I)
+    digits = re.sub(r'\D', '', re.sub(r'(?:ext|x|extension).*', '', first, flags=re.I))
+    if not digits:
+        return ''
+    # 10 digits → assume US, prepend +1
+    if len(digits) == 10:
+        e164 = '+1' + digits
+    # 11 digits starting with 1 → already has US country code
+    elif len(digits) == 11 and digits.startswith('1'):
+        e164 = '+' + digits
+    else:
+        return ''  # ambiguous — drop rather than guess a foreign country
+    return f'{e164} ext {ext_match.group(1)}' if ext_match else e164
+
 
 def format_phone_number(phone: str, default_country: str = "US") -> tuple[str, str]:
     """
