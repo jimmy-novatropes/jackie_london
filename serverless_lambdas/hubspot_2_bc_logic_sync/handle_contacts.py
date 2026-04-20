@@ -21,14 +21,14 @@ def handle_contact(event: Dict[str, Any]) -> str:
         bc_value_2_update = event.get("propertyValue")
 
         properties_2_get = {
-            "bc_unique_id_2": "bc_unique_id_2",
+            "bc_unique_id": "bc_unique_id",
             property_2_update: property_2_update
         }
         contact_data = get_contact(event['objectId'], HUBSPOT_TOKEN, properties_2_get)
         token = _get_bc_token(TENANT_ID, CREDS)
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         contact_id = requests.get(f"{BC_V2_BASE}/companies", headers=headers).json()["value"][0]["id"]
-        record_id = contact_data["properties"]["bc_unique_id_2"]  # the GUID of the record you want to update
+        record_id = contact_data["properties"]["bc_unique_id"]  # the GUID of the record you want to update
         entity = "contacts"
         get_url = f"{BC_V2_BASE}/companies({contact_id})/{entity}({record_id})"
         record = requests.get(get_url, headers=headers).json()
