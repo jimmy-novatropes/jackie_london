@@ -18,6 +18,10 @@ provider:
         - secretsmanager:GetSecretValue
         - secretsmanager:DescribeSecret
       Resource: "*"
+    - Effect: Allow
+      Action:
+        - lambda:InvokeFunction
+      Resource: "*"
 
 functions:
   hubspot_webhook_handler:
