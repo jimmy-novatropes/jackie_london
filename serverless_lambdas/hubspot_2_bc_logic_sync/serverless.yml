@@ -17,6 +17,10 @@ provider:
         - secretsmanager:GetSecretValue
         - secretsmanager:DescribeSecret
       Resource: "*"
+    - Effect: Allow
+      Action:
+        - lambda:InvokeFunction
+      Resource: "*"
 
 functions:
   hubspot_2_bc_logic_sync:
