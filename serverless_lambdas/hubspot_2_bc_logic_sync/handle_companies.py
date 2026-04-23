@@ -57,3 +57,6 @@ def handle_company(event: Dict[str, Any]) -> str:
         traceback.print_exc()
         return f"❌ Exception in handle_company: {e}"
 
+
+handle_company({'eventId': 1708667464, 'subscriptionId': 6282134, 'portalId': 244377491, 'appId': 30918371, 'occurredAt': 1776850335065, 'subscriptionType': 'company.propertyChange',
+                'attemptNumber': 0, 'objectId': 319288286961, 'propertyName': 'customer_price_group', 'propertyValue': 'RETAIL', 'changeSource': 'CRM_UI', 'sourceId': 'userId:52530071'})

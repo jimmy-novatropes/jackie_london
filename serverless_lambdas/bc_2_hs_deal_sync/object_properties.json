@@ -20,5 +20,6 @@
   "id": "sales_order_id",
   "totalAmountIncludingTax": "amount",
   "totalTaxAmount": "tax_amount",
-  "dueDate": "closedate"
+  "dueDate": "closedate",
+  "postingDate": "createdate"
 }

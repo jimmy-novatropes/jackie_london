@@ -5,11 +5,14 @@ from typing import Any, Dict, List, Tuple
 
 from supporting_functions import load_json_file
 import requests
+from datetime import datetime, timezone
+
 
 MISSING = object()
 
 # Load once
 PROPERTY_MAP: Dict[str, Dict[str, str]] = load_json_file("object_properties.json") or {}
+INVALID_DATES = {"0001-01-01", "0000-00-00", "", None}
 
 
 def get_nested_value(data: Dict[str, Any], path: str, default=MISSING) -> Any:
@@ -125,127 +128,30 @@ def combine_dates_numeric(start: str | None, end: str | None) -> str | None:
 
     return None
 
-
-# --------------------------------------------------------------------
-# Object-specific mappers
-# --------------------------------------------------------------------
-def map_company(company: Dict[str, Any], deal_owners) -> Dict[str, Any]:
-
-    mapped = generic_map(company)
-    mapped["name"] = mapped.get("customer_name", "").strip()
-    return mapped
-
-
-def map_apartment(group: Dict[str, Any]) -> Dict[str, Any]:
+def to_hubspot_date_safe(date_str, input_format):
     """
-    Maps stayable_group to an apartment-like HS object, plus address_1 from first stayable.
+    Convert date string → HubSpot timestamp (ms at midnight UTC)
     """
-    mapped = generic_map(group, "stayable_group")
 
-    for stayable in group.get("stayables", []):
-        addr = stayable.get("address1")
-        addr2 = stayable.get("address2")
-        addr3 = stayable.get("address3")
-        mapped["hs_address_1"] = addr
-        mapped["hs_address_2"] = addr2
-        mapped["address_3"] = addr3
+    if date_str in INVALID_DATES:
+        return None
 
+    try:
+        dt = datetime.strptime(date_str, input_format)
 
+        if dt.year <= 1900:
+            return None
 
-    return mapped
+        # Force midnight UTC directly
+        dt_utc = datetime(dt.year, dt.month, dt.day, tzinfo=timezone.utc)
 
+        return int(dt_utc.timestamp() * 1000)
 
-def map_contact(person: Dict[str, Any], deal_owners) -> Dict[str, Any]:
-    mapped = generic_map(person)
-    mapped["firstname"] = person["displayName"].split(" ")[0].strip() if person.get("displayName") else ""
-    mapped["lastname"] = " ".join(person["displayName"].split(" ")[1:]).strip() if person.get("displayName") and len(person["displayName"].split(" ")) > 1 else ""
-    return mapped
+    except Exception:
+        return None
 
 
-def map_stay(stay: Dict[str, Any], deal_owners) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
-    """
-    Map a stay to a "stay contact" HS service object + a list of resident links:
-    [{codeone_person_uid, codeone_stay_uid}, ...]
-    """
-    mapped = generic_map(stay, "contact_from_stay")
 
-    if "sales_representative_firstname" in mapped and "sales_representative_lastname" in mapped:
-        for owner_index, owner in enumerate(deal_owners):
-            if (
-                owner.get("firstName") == mapped["sales_representative_firstname"].strip()
-                and owner.get("lastName") == mapped["sales_representative_lastname"].strip()
-            ):
-                mapped["hubspot_owner_id"] = owner.get("userId")
-                break
-            if owner_index == len(deal_owners) - 1:
-                print()
-    # Dealname-like hs_name
-    total_amount = 0
-    for charge in stay.get("charges", []):
-        total_amount += charge.get("amount", 0)
-
-    unit_name = get_nested_value(stay, "stayableU.name")
-    group_name = get_nested_value(stay, "stayableU.stayableGroupU.name")
-    start_raw = get_nested_value(stay, "start")
-    end_raw = get_nested_value(stay, "end")
-    residents = stay.get("residents", [])
-    resident_data = residents[0].get("personU", {}) if residents else {}
-    first_name = resident_data.get("firstName", "")
-    last_name = resident_data.get("lastName", "")
-    # stay_rate = stay["stays"][0].get("rate", {}) if stay.get("stays") else {}
-    # mapped["booking_amount"] = stay_rate
-    mapped["stay_start_date"] = datetime.fromisoformat(start_raw.replace("Z", "+00:00"))
-    mapped["stay_end_date"] = datetime.fromisoformat(end_raw.replace("Z", "+00:00"))
-    mapped["hs_amount_paid"] = total_amount
-    # mapped["amount"] = stay_rate
-    mapped["codeone_primary_resident_firstname"] = first_name
-    mapped["codeone_primary_resident_lastname"] = last_name
-    mapped["codeone_stay_primary_resident_uid"] = resident_data.get("personUid", "")
-    if resident_data.get("primaryEmailAddressU") is not None:
-        mapped["codeone_primary_resident_email"] = resident_data.get("primaryEmailAddressU", {}).get("address", "")
-
-    # if mapped["codeone_stay_uid"] == "a4ca0880-2e09-4bd4-8226-6c43e0b688e0":
-    #     print()
-
-     # Dealname-like hs_name
-
-    parts: List[str] = []
-    if unit_name not in (None, MISSING):
-        parts.append(str(unit_name).strip())
-    if group_name not in (None, MISSING):
-        parts.append(str(group_name).strip())
-
-    date_part = combine_dates_numeric(start_raw, end_raw)
-    # date_start = start_raw.split("T")[0].replace("-", "/")
-    # date_end = end_raw.split("T")[0].replace("-", "/")
-    # date_part = f"{date_start} - {date_end}"
-    if date_part:
-        parts.append(date_part)
-
-    if parts:
-        mapped["hs_name"] = " | ".join(parts)
-
-    # Static pipeline stage
-    mapped["hs_pipeline_stage"] = "8e2b21d0-7a90-4968-8f8c-a8525cc49c70"
-
-    # Collect residents from the stay
-    residents: List[Dict[str, Any]] = []
-    uid_resident_list = ""
-    for resident in stay.get("residents", []):
-        resident_uid = resident.get("personU", {}).get("personUid")
-        if resident_uid:
-            residents.append(
-                {
-                    "codeone_person_uid": resident_uid,
-                    "codeone_stay_uid": stay.get("stayUid"),
-                }
-            )
-            if resident_uid != mapped["codeone_stay_primary_resident_uid"]:
-                uid_resident_list += resident_uid + ","
-    if uid_resident_list.endswith(","):
-        uid_resident_list = uid_resident_list[:-1]
-    mapped["codeone_secondary_residents_uid"] = uid_resident_list
-    return mapped, residents
 
 
 def map_deal(booking: Dict[str, Any], deal_owners) -> Dict[str, Any]:
@@ -259,4 +165,28 @@ def map_deal(booking: Dict[str, Any], deal_owners) -> Dict[str, Any]:
         mapped["closedate"] = None
         print()
 
+    if "client_status" in mapped and mapped["client_status"]:
+        if mapped["client_status"].lower() == "active":
+            mapped["dealstage"] = "appointmentscheduled"
+        elif mapped["client_status"].lower() == "canceled" or mapped["client_status"].lower() == "cancelled" :
+            mapped["dealstage"] = "closedlost"
+        elif mapped["client_status"].lower() == "paid":
+            mapped["dealstage"] = "closedwon"
+        elif mapped["client_status"].lower() == "open":
+            mapped["dealstage"] = "contractsent"
+
     return mapped
+
+
+def map_line_results(record_data) -> dict:
+
+    mapping_path = "line_properties.json"
+    property_mapping = load_json_file(mapping_path)
+    mapped_item = {
+        target_key: value
+        for source_key, target_key in property_mapping.items()
+        if (value := get_nested_value(record_data, source_key)) is not MISSING
+    }
+    mapped_item["shipment_date"] = to_hubspot_date_safe(mapped_item.get("shipment_date"), "%Y-%m-%d")
+
+    return mapped_item
