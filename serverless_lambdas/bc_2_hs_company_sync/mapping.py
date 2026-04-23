@@ -158,6 +158,28 @@ def fmt_number(value) -> str:
         return f"{float(value):,.2f}"
     except (TypeError, ValueError):
         return ""
+
+import re
+
+def to_e164_us(raw):
+    if not raw:
+        return ''
+    # Take only the first number if multiple are jammed together
+    first = re.split(r'[;,/\n]', str(raw))[0]
+    # Keep digits only; separately capture an extension if present
+    ext_match = re.search(r'(?:ext|x|extension)\.?\s*(\d+)', first, flags=re.I)
+    digits = re.sub(r'\D', '', re.sub(r'(?:ext|x|extension).*', '', first, flags=re.I))
+    if not digits:
+        return ''
+    # 10 digits → assume US, prepend +1
+    if len(digits) == 10:
+        e164 = '+1' + digits
+    # 11 digits starting with 1 → already has US country code
+    elif len(digits) == 11 and digits.startswith('1'):
+        e164 = '+' + digits
+    else:
+        return ''  # ambiguous — drop rather than guess a foreign country
+    return f'{e164} ext {ext_match.group(1)}' if ext_match else e164
 # --------------------------------------------------------------------
 # Object-specific mappers
 # --------------------------------------------------------------------
@@ -182,6 +204,9 @@ def map_company(company: Dict[str, Any], deal_owners) -> Dict[str, Any]:
         mapped["balance"] = fmt_number(mapped["balance"])
     if "credit_limit" in mapped and mapped["credit_limit"]:
         mapped["credit_limit"] = fmt_number(mapped["credit_limit"])
+
+    if "phone" in mapped and mapped["phone"]:
+        mapped["phone"] = to_e164_us(mapped["phone"])
 
     return mapped
 
