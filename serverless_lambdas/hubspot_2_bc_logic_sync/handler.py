@@ -20,9 +20,6 @@ HUBSPOT_TOKEN: str = CREDS.get("HUBSPOT_TOKEN", "")
 USERNAME: str = CREDS.get("GRAPHQL_USERNAME", "")
 PASSWORD: str = CREDS.get("GRAPHQL_PASSWORD", "")
 
-creds = {
-
-}
 
 # --------------------------------------------------
 # NetSuite helpers

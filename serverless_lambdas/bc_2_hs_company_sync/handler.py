@@ -16,8 +16,8 @@ from upsert_functions import prepare_companies_batch_payload, send_batch_upsert
 HUBSPOT_API = "https://api.hubapi.com"
 BC_ROOT = "https://api.businesscentral.dynamics.com/v2.0"
 COMPANY_NAME = "JACKIE LONDON"
-BATCH_SIZE = 1000
-PAST_DAYS = 5
+BATCH_SIZE = 50
+PAST_DAYS = 400
 
 # ── Credentials ────────────────────────────────────────────────────────────────
 def _load_creds() -> Dict[str, Any]:
@@ -131,10 +131,30 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     # Fetch recently modified customers
     since = (datetime.now(timezone.utc) - timedelta(days=PAST_DAYS)).isoformat()
+
+    days_since = PAST_DAYS
+    days_range = 300
+    days_until = days_since - days_range
+
+    #
+    # while days_until > 0:
+    since = (datetime.now(timezone.utc) - timedelta(days=days_since)).isoformat()
+    until = (datetime.now(timezone.utc) - timedelta(days=days_until)).isoformat()
+
+    # params = {
+    #     "$select": "*",
+    #     "$filter": f"lastModifiedDateTime ge {since}"
+    # }
+
+    params = {
+        "$select": "*",
+        "$filter": f"lastModifiedDateTime ge {since} and lastModifiedDateTime le {until}"
+    }
     resp = requests.get(
         f"{BC_V2_BASE}/companies({company_id})/customers",
         headers=headers,
-        params={"$select": "*", "$filter": f"lastModifiedDateTime ge {since}"},
+        # params={"$select": "*", "$filter": f"lastModifiedDateTime ge {since}"},
+        params=params,
         timeout=30,
     )
     resp.raise_for_status()
@@ -189,7 +209,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if len(companies) >= BATCH_SIZE:
             payload_url, payload = prepare_companies_batch_payload(companies, unique_prop="bc_unique_id_2")
             results = send_batch_upsert(payload_url, payload, HUBSPOT_TOKEN)
-            print(f"Batch sent: {len(results)} companies. Last: {customer_number} ({cust_ind + 1}/{len(customers)})")
+            print(f"Batch sent: {BATCH_SIZE} companies. Last: {customer_number} ({cust_ind + 1}/{len(customers)})")
             companies = []
 
     # Flush remaining records
