@@ -17,7 +17,7 @@ HUBSPOT_API = "https://api.hubapi.com"
 BC_ROOT = "https://api.businesscentral.dynamics.com/v2.0"
 COMPANY_NAME = "JACKIE LONDON"
 BATCH_SIZE = 50
-PAST_DAYS = 400
+PAST_DAYS = 3
 
 # ── Credentials ────────────────────────────────────────────────────────────────
 def _load_creds() -> Dict[str, Any]:
@@ -141,15 +141,15 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     since = (datetime.now(timezone.utc) - timedelta(days=days_since)).isoformat()
     until = (datetime.now(timezone.utc) - timedelta(days=days_until)).isoformat()
 
-    # params = {
-    #     "$select": "*",
-    #     "$filter": f"lastModifiedDateTime ge {since}"
-    # }
-
     params = {
         "$select": "*",
-        "$filter": f"lastModifiedDateTime ge {since} and lastModifiedDateTime le {until}"
+        "$filter": f"lastModifiedDateTime ge {since}"
     }
+    #
+    # params = {
+    #     "$select": "*",
+    #     "$filter": f"lastModifiedDateTime ge {since} and lastModifiedDateTime le {until}"
+    # }
     resp = requests.get(
         f"{BC_V2_BASE}/companies({company_id})/customers",
         headers=headers,
