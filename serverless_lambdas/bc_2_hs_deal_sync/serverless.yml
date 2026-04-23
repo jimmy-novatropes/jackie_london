@@ -24,7 +24,7 @@ functions:
     name: bc-2-hs-deal-sync
     handler: handler.lambda_handler
     timeout: 900
-    memorySize: 128
+    memorySize: 512
     layers:
       - arn:aws:lambda:us-east-1:630977122946:layer:python-deps-layer:1
     package:

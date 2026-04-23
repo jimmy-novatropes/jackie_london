@@ -25,7 +25,7 @@ CREDS = load_jackielondon_creds()
 HUBSPOT_TOKEN: str = CREDS.get("HUBSPOT_TOKEN", "")
 USERNAME: str = CREDS.get("GRAPHQL_USERNAME", "")
 PASSWORD: str = CREDS.get("GRAPHQL_PASSWORD", "")
-DAYS = 365*3 # fetch records from the past 2 years; adjust as needed
+DAYS = 3 # fetch records from the past 2 years; adjust as needed
 batch_size = 500
 
 
