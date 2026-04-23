@@ -1,7 +1,8 @@
 import boto3, json
 
 profile = 'jackie_london'
-state_machine_arn = 'arn:aws:states:us-east-1::stateMachine:jackie_london_sync'
+state_machine_arn = 'arn:aws:states:us-east-1:630977122946:stateMachine:jackie_london_sync'
+state_machine_arn = 'arn:aws:states:us-east-1:630977122946:stateMachine:bc_2_hubspot_sync'
 output_file = 'stepfunction_definition.json'
 
 session = boto3.Session(profile_name=profile)

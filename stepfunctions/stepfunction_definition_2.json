@@ -302,7 +302,7 @@
               ]
             }
           ],
-          "Next": "Success"
+          "Next": "DealContactAssoc"
         }
       ],
       "Default": "WaitAssoc2"
@@ -311,6 +311,68 @@
       "Type": "Wait",
       "Seconds": 3,
       "Next": "DealCompanyAssoc"
+    },
+    "DealContactAssoc": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "hs-deal-contact-associations",
+        "Payload.$": "$"
+      },
+      "ResultSelector": {
+        "raw.$": "$.Payload",
+        "parsedBody.$": "States.StringToJson($.Payload.body)"
+      },
+      "ResultPath": "$.assoc3",
+      "Next": "CheckAssoc3"
+    },
+    "CheckAssoc3": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Or": [
+            {
+              "And": [
+                {
+                  "Variable": "$.assoc3.raw.results_completed",
+                  "BooleanEquals": true
+                },
+                {
+                  "Or": [
+                    {
+                      "Variable": "$.assoc3.raw.statusCode",
+                      "NumericEquals": 200
+                    },
+                    {
+                      "Variable": "$.assoc3.raw.statusCode",
+                      "IsPresent": false
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "And": [
+                {
+                  "Variable": "$.assoc3.parsedBody.results_completed",
+                  "BooleanEquals": true
+                },
+                {
+                  "Variable": "$.assoc3.parsedBody.statusCode",
+                  "NumericEquals": 200
+                }
+              ]
+            }
+          ],
+          "Next": "Success"
+        }
+      ],
+      "Default": "WaitAssoc3"
+    },
+    "WaitAssoc3": {
+      "Type": "Wait",
+      "Seconds": 3,
+      "Next": "DealContactAssoc"
     },
     "Success": {
       "Type": "Succeed"
