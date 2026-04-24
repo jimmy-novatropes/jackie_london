@@ -4,7 +4,7 @@
   "Balance_Due_LCY": "balance_due",
   "Balance_LCY": "balance",
   "creditLimit": "credit_limit",
-  "salespersonCode": "salesperson_code",
+  "salespersonCode": "salespersoncode",
   "lastModifiedDateTime": "last_date_modified",
   "addressLine1": "address",
   "addressLine2": "address2",
@@ -15,12 +15,12 @@
   "email": "email",
   "website": "customer_website",
   "id": "bc_unique_id_2",
-  "Language_Code": "language_code",
+  "Language_Code": "languagecode",
   "Customer_Price_Group": "customer_price_group",
   "Payment_Terms_Code": "payment_terms",
   "Responsibility_Center": "responsibility_center",
   "dbaName": "dba_name",
-  "printInvoice": "do_not_print_invoice",
+  "printInvoice": "donotprintinvoice",
   "startDate": "startdate",
   "endDate": "end_date",
   "youtube": "youtube",
@@ -31,5 +31,4 @@
   "outOfBusinessDate": "out_of_business_date",
   "leadSource": "lead_source",
   "customerType": "customer_type"
-
 }

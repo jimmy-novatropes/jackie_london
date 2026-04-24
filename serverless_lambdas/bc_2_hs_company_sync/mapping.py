@@ -196,8 +196,8 @@ def map_company(company: Dict[str, Any], deal_owners) -> Dict[str, Any]:
     if "out_of_business_date" in mapped and mapped["out_of_business_date"]:
         mapped["out_of_business_date"] = to_hubspot_date_safe(mapped.get("out_of_business_date"), "%Y-%m-%d")
 
-    if "language_code" in mapped and mapped["language_code"]:
-        print()
+    # if "language_code" in mapped and mapped["language_code"]:
+    #     print()
     if "balance_due" in mapped and mapped["balance_due"]:
         mapped["balance_due"] = fmt_number(mapped["balance_due"])
     if "balance" in mapped and mapped["balance"]:
