@@ -88,28 +88,18 @@ def handle_company(event: Dict[str, Any]) -> str:
         entity    = "customers"
         get_url   = f"{BC_V2_BASE}/companies({company_id})/{entity}({record_id})"
         record    = requests.get(get_url, headers=headers).json()
-        etag      = record["@odata.etag"]
         record_no = record.get("number")
+        # get_url_2 = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE%20LONDON')/customerscardapi?$filter=No eq 'WEB-7098'"
+        # get_url_2 = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE%20LONDON')/customerscardapi"
+        # get_url_2 = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE%20LONDON')/test"
+        # record_2   = requests.get(get_url_2, headers=headers, params={"$top": 1}).json()
+        etag      = record["@odata.etag"]
 
         payload = {bc_property_2_update: bc_value_2_update}
-
         # --- Attempt 1: v2.0 REST (customers) ---
         patch_headers = {**headers, "If-Match": etag}
-        resp = requests.patch(get_url, headers=patch_headers, json=payload)
-        BC_ODATA_BASE = f"https://api.businesscentral.dynamics.com/v2.0/{TENANT_ID}/Production/ODataV4"
 
-        if resp.ok:
-            return f"🔄 Company updated via v2 customers: {event['objectId']} with {payload}, {resp.json()}"
-
-        # Only fall through on the specific "field not on this entity" error
-        if not (resp.status_code == 400 and PROP_MISSING in resp.text):
-            resp.raise_for_status()
-
-        # --- Attempt 2: OData V4 CustomerCard ---
-        if not record_no:
-            return f"❌ Cannot fall back to OData: no 'number' on v2 customer record {record_id}"
-
-        odata_url = f"{BC_ODATA_BASE}/Company('{company_name}')/CustomerCard(No='{record_no}')"
+        odata_url = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/api/openflow3/integration/v1.0/companies(d87c3c9f-8458-ee11-be6d-0022481d221d)/customerscrm1({record_id})"
         resp = requests.patch(odata_url, headers={**headers, "If-Match": "*"}, json=payload)
 
         if resp.ok:
@@ -126,4 +116,9 @@ def handle_company(event: Dict[str, Any]) -> str:
         traceback.print_exc()
         return f"❌ Exception in handle_company: {e}"
 
-handle_company({'eventId': 348768705, 'subscriptionId': 6282115, 'portalId': 244377491, 'appId': 30918371, 'occurredAt': 1776967720305, 'subscriptionType': 'company.propertyChange', 'attemptNumber': 0, 'objectId': 296259049166, 'propertyName': 'credit_limit', 'propertyValue': '20', 'changeSource': 'CRM_UI', 'sourceId': 'userId:52530071'})
+handle_company(
+
+    {'eventId': 138695501, 'subscriptionId': 6282117, 'portalId': 244377491, 'appId': 30918371, 'occurredAt': 1776970149260, 'subscriptionType': 'company.propertyChange', 'attemptNumber': 0,
+     'objectId': 296259049166, 'propertyName': 'responsibility_center', 'propertyValue': 'ECOMMERCE', 'changeSource': 'CRM_UI', 'sourceId': 'userId:52530071'}
+
+)
