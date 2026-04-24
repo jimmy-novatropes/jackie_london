@@ -29,7 +29,11 @@ def handle_company(event: Dict[str, Any]) -> str:
         bc_value_2_update = event.get("propertyValue")
 
         if property_2_update in ["createdate", "lastmodifieddate", "out_of_business_date", "startdate", "end_date"]:
-            bc_value_2_update = timestamp_to_bc_date(int(bc_value_2_update))
+
+            if isinstance(bc_value_2_update, str) and bc_value_2_update.isdigit():
+                bc_value_2_update = timestamp_to_bc_date(int(bc_value_2_update))
+            else:
+                bc_value_2_update = None
         elif property_2_update not in ["zip_code", "address2", "address"]:
             bc_value_2_update = int(bc_value_2_update) if isinstance(bc_value_2_update, str) and bc_value_2_update.isdigit() else bc_value_2_update
 
@@ -82,7 +86,6 @@ def handle_company(event: Dict[str, Any]) -> str:
 
 handle_company(
 
-    {'eventId': 3904299701, 'subscriptionId': 6282113, 'portalId': 244377491, 'appId': 30918371, 'occurredAt': 1777029734672, 'subscriptionType': 'company.propertyChange',
-     'attemptNumber': 0, 'objectId': 296298940107, 'propertyName': 'startdate', 'propertyValue': '1513728000000', 'changeSource': 'CRM_UI', 'sourceId': 'userId:52530071'}
-
+    {'eventId': 2929065009, 'subscriptionId': 6320373, 'portalId': 244377491, 'appId': 30918371, 'occurredAt': 1777030861602, 'subscriptionType': 'company.propertyChange', 'attemptNumber': 0,
+     'objectId': 296298940107, 'propertyName': 'end_date', 'propertyValue': '', 'changeSource': 'CRM_UI', 'sourceId': 'userId:52530071'}
 )
