@@ -86,6 +86,6 @@ def handle_company(event: Dict[str, Any]) -> str:
 
 handle_company(
 
-    {'eventId': 2929065009, 'subscriptionId': 6320373, 'portalId': 244377491, 'appId': 30918371, 'occurredAt': 1777030861602, 'subscriptionType': 'company.propertyChange', 'attemptNumber': 0,
-     'objectId': 296298940107, 'propertyName': 'end_date', 'propertyValue': '', 'changeSource': 'CRM_UI', 'sourceId': 'userId:52530071'}
+    {'eventId': 1457647294, 'subscriptionId': 6282131, 'portalId': 244377491, 'appId': 30918371, 'occurredAt': 1777031874024, 'subscriptionType': 'company.propertyChange',
+     'attemptNumber': 0, 'objectId': 296298940107, 'propertyName': 'tiktok', 'propertyValue': 'test1', 'changeSource': 'CRM_UI', 'sourceId': 'userId:52530071'}
 )
