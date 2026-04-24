@@ -12,52 +12,12 @@ BC_ROOT = "https://api.businesscentral.dynamics.com/v2.0"
 BC_V2_BASE = f"{BC_ROOT}/{TENANT_ID}/Production/api/v2.0"
 
 
-# def handle_company(event: Dict[str, Any]) -> str:
-#
-#     try:
-#         property_2_update = event.get("propertyName")
-#         company_props_map = invert_dict(load_json_file("company_properties.json"))
-#         bc_property_2_update = company_props_map.get(property_2_update)
-#         bc_value_2_update = event.get("propertyValue")
-#
-#         properties_2_get = {
-#             "bc_unique_id_2": "bc_unique_id_2",
-#             property_2_update: property_2_update
-#         }
-#         company_data = get_company(event['objectId'], HUBSPOT_TOKEN, properties_2_get)
-#         token = _get_bc_token(TENANT_ID, CREDS)
-#         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-#         company_id = requests.get(f"{BC_V2_BASE}/companies", headers=headers).json()["value"][0]["id"]
-#         # 1. Fetch the existing record to get its etag
-#         # (entity could be customers, items, salesOrders, journalLines, etc.)
-#         record_id = company_data["properties"]["bc_unique_id_2"]  # the GUID of the record you want to update
-#         entity = "customers"
-#         get_url = f"{BC_V2_BASE}/companies({company_id})/{entity}({record_id})"
-#         record = requests.get(get_url, headers=headers).json()
-#         etag = record["@odata.etag"]
-#
-#         # 2. PATCH with If-Match
-#         patch_headers = {
-#             **headers,
-#             "If-Match": etag,  # use "*" to skip concurrency check, but etag is safer
-#         }
-#         # deal_props_map = invert_dict(load_json_file("deal_properties.json"))
-#         # contact_props_map = invert_dict(load_json_file("contact_properties.json"))
-#         payload = {
-#             bc_property_2_update: bc_value_2_update,
-#             # only include fields you want to change
-#         }
-#         resp = requests.patch(get_url, headers=patch_headers, json=payload)
-#         resp.raise_for_status()
-#         updated = resp.json()
-#         return f"🔄 Company updated: {event['objectId']} with {payload}, {updated}"
-#
-#     except Exception as e:
-#         print(f"❌ Exception in handle_company: {e}")
-#         traceback.print_exc()
-#         return f"❌ Exception in handle_company: {e}"
-
 PROP_MISSING = "does not exist on type"  # substring in BC's 400 body when a field isn't on the entity
+from datetime import datetime
+
+def timestamp_to_bc_date(timestamp_ms):
+    """Convert millisecond timestamp to ISO date string"""
+    return datetime.utcfromtimestamp(timestamp_ms / 1000).strftime('%Y-%m-%d')
 
 
 def handle_company(event: Dict[str, Any]) -> str:
@@ -68,7 +28,9 @@ def handle_company(event: Dict[str, Any]) -> str:
         bc_property_2_update = company_props_map.get(property_2_update)
         bc_value_2_update = event.get("propertyValue")
 
-        if property_2_update not in ["zip_code"]:
+        if property_2_update in ["createdate", "lastmodifieddate", "out_of_business_date", "startdate", "end_date"]:
+            bc_value_2_update = timestamp_to_bc_date(int(bc_value_2_update))
+        elif property_2_update not in ["zip_code", "address2", "address"]:
             bc_value_2_update = int(bc_value_2_update) if isinstance(bc_value_2_update, str) and bc_value_2_update.isdigit() else bc_value_2_update
 
         properties_2_get = {
@@ -91,10 +53,7 @@ def handle_company(event: Dict[str, Any]) -> str:
         get_url   = f"{BC_V2_BASE}/companies({company_id})/{entity}({record_id})"
         record    = requests.get(get_url, headers=headers).json()
         record_no = record.get("number")
-        # get_url_2 = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE%20LONDON')/customerscardapi?$filter=No eq 'WEB-7098'"
-        # get_url_2 = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE%20LONDON')/customerscardapi"
-        # get_url_2 = f"https://api.businesscentral.dynamics.com/v2.0/55e10fec-4486-496b-842d-cc54c37e7d74/Production/ODataV4/Company('JACKIE%20LONDON')/test"
-        # record_2   = requests.get(get_url_2, headers=headers, params={"$top": 1}).json()
+
         etag      = record["@odata.etag"]
 
         payload = {bc_property_2_update: bc_value_2_update}
@@ -123,7 +82,7 @@ def handle_company(event: Dict[str, Any]) -> str:
 
 handle_company(
 
-    {'eventId': 3005063918, 'subscriptionId': 6282126, 'portalId': 244377491, 'appId': 30918371, 'occurredAt': 1777028088721, 'subscriptionType': 'company.propertyChange', 'attemptNumber': 0,
-     'objectId': 296298940107, 'propertyName': 'zip_code', 'propertyValue': '11553', 'changeSource': 'CRM_UI', 'sourceId': 'userId:52530071'}
+    {'eventId': 3904299701, 'subscriptionId': 6282113, 'portalId': 244377491, 'appId': 30918371, 'occurredAt': 1777029734672, 'subscriptionType': 'company.propertyChange',
+     'attemptNumber': 0, 'objectId': 296298940107, 'propertyName': 'startdate', 'propertyValue': '1513728000000', 'changeSource': 'CRM_UI', 'sourceId': 'userId:52530071'}
 
 )
