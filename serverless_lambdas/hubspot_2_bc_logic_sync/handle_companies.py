@@ -67,7 +67,9 @@ def handle_company(event: Dict[str, Any]) -> str:
         company_props_map = invert_dict(load_json_file("company_properties.json"))
         bc_property_2_update = company_props_map.get(property_2_update)
         bc_value_2_update = event.get("propertyValue")
-        bc_value_2_update = int(bc_value_2_update) if isinstance(bc_value_2_update, str) and bc_value_2_update.isdigit() else bc_value_2_update
+
+        if property_2_update not in ["zip_code"]:
+            bc_value_2_update = int(bc_value_2_update) if isinstance(bc_value_2_update, str) and bc_value_2_update.isdigit() else bc_value_2_update
 
         properties_2_get = {
             "bc_unique_id_2": "bc_unique_id_2",
@@ -105,6 +107,9 @@ def handle_company(event: Dict[str, Any]) -> str:
         if resp.ok:
             return f"🔄 Company updated via OData CustomerCard: {event['objectId']} with {payload}, {resp.json()}"
 
+        else:
+            print(resp.status_code, resp.text)
+
         if resp.status_code == 400 and PROP_MISSING in resp.text:
             return (f"❌ Property '{bc_property_2_update}' not found on v2 customer "
                     f"OR CustomerCard for {event['objectId']}")
@@ -118,7 +123,7 @@ def handle_company(event: Dict[str, Any]) -> str:
 
 handle_company(
 
-    {'eventId': 138695501, 'subscriptionId': 6282117, 'portalId': 244377491, 'appId': 30918371, 'occurredAt': 1776970149260, 'subscriptionType': 'company.propertyChange', 'attemptNumber': 0,
-     'objectId': 296259049166, 'propertyName': 'responsibility_center', 'propertyValue': 'ECOMMERCE', 'changeSource': 'CRM_UI', 'sourceId': 'userId:52530071'}
+    {'eventId': 3005063918, 'subscriptionId': 6282126, 'portalId': 244377491, 'appId': 30918371, 'occurredAt': 1777028088721, 'subscriptionType': 'company.propertyChange', 'attemptNumber': 0,
+     'objectId': 296298940107, 'propertyName': 'zip_code', 'propertyValue': '11553', 'changeSource': 'CRM_UI', 'sourceId': 'userId:52530071'}
 
 )
