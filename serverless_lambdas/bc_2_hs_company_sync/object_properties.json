@@ -30,5 +30,6 @@
   "outOfBusiness": "out_of_business",
   "outOfBusinessDate": "out_of_business_date",
   "leadSource": "lead_source",
-  "customerType": "customer_type"
+  "customerType": "customer_type",
+  "Shipping_Agent_Code": "preferred_shipping_company"
 }
