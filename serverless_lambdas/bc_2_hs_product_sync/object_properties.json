@@ -1,0 +1,15 @@
+{
+  "id": "product_id",
+  "number": "item_number",
+  "itemCategoryCode": "item_category",
+  "inventory": "inventory_available",
+  "unitPrice": "price",
+  "unitCost": "hs_cost_of_goods_sold",
+  "variant_description": "description",
+  "bc_variant_id": "variant_id",
+  "sku": "hs_sku",
+  "name": "name",
+  "type": "hs_product_type"
+
+}
+
