@@ -35,7 +35,9 @@ def handle_company(event: Dict[str, Any]) -> str:
             else:
                 bc_value_2_update = None
         elif property_2_update not in ["zip_code", "address2", "address"]:
-            bc_value_2_update = int(bc_value_2_update) if isinstance(bc_value_2_update, str) and bc_value_2_update.isdigit() else bc_value_2_update
+            if "," in bc_value_2_update:
+                bc_value_2_update = bc_value_2_update.replace(",", "")
+                bc_value_2_update = int(bc_value_2_update) if isinstance(bc_value_2_update, str) and bc_value_2_update.isdigit() else bc_value_2_update
 
         properties_2_get = {
             "bc_unique_id_2": "bc_unique_id_2",
