@@ -302,7 +302,7 @@
               ]
             }
           ],
-          "Next": "Success"
+          "Next": "ProductSync"
         }
       ],
       "Default": "WaitAssoc2"
@@ -312,6 +312,71 @@
       "Seconds": 3,
       "Next": "DealCompanyAssoc"
     },
+
+    "ProductSync": {
+  "Type": "Task",
+  "Resource": "arn:aws:states:::lambda:invoke",
+  "Parameters": {
+    "FunctionName": "bc-2-hs-product-sync",
+    "Payload.$": "$"
+  },
+  "ResultSelector": {
+    "raw.$": "$.Payload",
+    "parsedBody.$": "States.StringToJson($.Payload.body)"
+  },
+  "ResultPath": "$.products",
+  "Next": "CheckProducts"
+},
+"CheckProducts": {
+  "Type": "Choice",
+  "Choices": [
+    {
+      "Or": [
+        {
+          "And": [
+            {
+              "Variable": "$.products.raw.results_completed",
+              "BooleanEquals": true
+            },
+            {
+              "Or": [
+                {
+                  "Variable": "$.products.raw.statusCode",
+                  "NumericEquals": 200
+                },
+                {
+                  "Variable": "$.products.raw.statusCode",
+                  "IsPresent": false
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "And": [
+            {
+              "Variable": "$.products.parsedBody.results_completed",
+              "BooleanEquals": true
+            },
+            {
+              "Variable": "$.products.parsedBody.statusCode",
+              "NumericEquals": 200
+            }
+          ]
+        }
+      ],
+      "Next": "Success"
+    }
+  ],
+  "Default": "Waitproducts"
+},
+"Waitproducts": {
+  "Type": "Wait",
+  "Seconds": 3,
+  "Next": "ProductSync"
+},
+
+
     "Success": {
       "Type": "Succeed"
     }
