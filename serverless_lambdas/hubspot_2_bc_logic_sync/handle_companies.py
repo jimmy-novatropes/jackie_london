@@ -34,10 +34,23 @@ def handle_company(event: Dict[str, Any]) -> str:
                 bc_value_2_update = timestamp_to_bc_date(int(bc_value_2_update))
             else:
                 bc_value_2_update = None
+        # elif property_2_update not in ["zip_code", "address2", "address"]:
+        #     if "," in bc_value_2_update:
+        #         bc_value_2_update = bc_value_2_update.replace(",", "")
+        #         bc_value_2_update = int(bc_value_2_update) if isinstance(bc_value_2_update, str) and bc_value_2_update.isdigit() else bc_value_2_update
         elif property_2_update not in ["zip_code", "address2", "address"]:
-            if "," in bc_value_2_update:
+            if isinstance(bc_value_2_update, str):
                 bc_value_2_update = bc_value_2_update.replace(",", "")
-                bc_value_2_update = int(bc_value_2_update) if isinstance(bc_value_2_update, str) and bc_value_2_update.isdigit() else bc_value_2_update
+                try:
+                    # Convert to float (handles both decimals and integers)
+                    bc_value_2_update = float(bc_value_2_update)
+                    # Convert to int if it's a whole number
+                    if bc_value_2_update.is_integer():
+                        bc_value_2_update = int(bc_value_2_update)
+                except ValueError:
+                    # Keep as string if conversion fails
+                    pass
+
 
         properties_2_get = {
             "bc_unique_id_2": "bc_unique_id_2",
