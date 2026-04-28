@@ -1,16 +1,15 @@
 import json
-import math
 import random
-from datetime import datetime, timedelta, timezone
-from statistics import mean
-from typing import Any, Dict
+from datetime import timedelta, timezone, datetime
 from urllib.parse import quote
-
 import requests
-
 from credentials_load import is_running_in_lambda, load_secrets, load_secrets_locally
 from mapping import map_company
 from upsert_functions import prepare_companies_batch_payload, send_batch_upsert
+
+from collections import defaultdict
+from typing import Any, Dict
+
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 HUBSPOT_API = "https://api.hubapi.com"
@@ -20,10 +19,12 @@ BATCH_SIZE = 50
 PAST_DAYS = 5
 DAY_RANGE = 5
 
+
 # ── Credentials ────────────────────────────────────────────────────────────────
 def _load_creds() -> Dict[str, Any]:
     loader = load_secrets if is_running_in_lambda() else load_secrets_locally
     return loader("JACKIE_LONDON_KEYS")
+
 
 CREDS = _load_creds()
 TENANT_ID: str = CREDS["tenant_id"]
@@ -475,12 +476,6 @@ def get_all_hubspot_users() -> list:
 #         "usage_of_credit_limit":     credit_usage,
 #     }
 
-import math
-from collections import defaultdict
-from datetime import datetime
-from statistics import mean
-from typing import Any, Dict
-
 
 def calculate_collection_metrics(
     entries: list,
@@ -560,7 +555,7 @@ def calculate_collection_metrics(
         "total_sales":               round(total_sales, 2),
         "total_sales_fiscal_year":   round(total_sales_fy, 2),
         "payments_this_year":        round(payments_fy, 2),
-        "overdue_payments":          round(overdue_amount, 2),
+        "overdue_payment":          round(overdue_amount, 2),
         "overdue_payments_count":    overdue_count,
         # "average_collection_period": round(mean(collection_days), 1) if collection_days else 0,
         # "average_late_payments":     math.ceil(mean(late_days))      if late_days       else 0,
